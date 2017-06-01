@@ -1,6 +1,8 @@
 # Hammer
 
-**TODO: Add description**
+A rate-limiter for Elixir, with pluggable storage backends.
+
+*Currently worse-than-alpha quality, do not use in production*.
 
 ## Installation
 
@@ -16,4 +18,3 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/hammer](https://hexdocs.pm/hammer).
-

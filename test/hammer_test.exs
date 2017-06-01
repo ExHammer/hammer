@@ -1,0 +1,8 @@
+defmodule HammerTest do
+  use ExUnit.Case
+  doctest Hammer
+
+  test "the truth" do
+    assert 1 + 1 == 2
+  end
+end

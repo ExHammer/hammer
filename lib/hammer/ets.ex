@@ -14,8 +14,8 @@ defmodule Hammer.ETS do
     GenServer.start_link(__MODULE__, args, name: __MODULE__)
   end
 
-  def stop(server) do
-    GenServer.call(server, :stop)
+  def stop() do
+    GenServer.call(__MODULE__, :stop)
   end
 
   def ping() do
@@ -24,10 +24,6 @@ defmodule Hammer.ETS do
 
   def setup() do
     GenServer.call(__MODULE__, :setup)
-  end
-
-  def bucket_exists?(key) do
-    GenServer.call(__MODULE__, {:bucket_exists?, key})
   end
 
   def count_hit(key, stamp) do
@@ -63,12 +59,6 @@ defmodule Hammer.ETS do
     %{ets_table_name: tn} = state
     :ets.new(tn, [:named_table, :ordered_set, :private])
     {:reply, :ok, state}
-  end
-
-  def handle_call({:bucket_exists?, key}, _from, state) do
-    %{ets_table_name: tn} = state
-    exists? = :ets.member(tn, key)
-    {:reply, exists?, state}
   end
 
   def handle_call({:count_hit, key, stamp}, _from, state) do

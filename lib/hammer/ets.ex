@@ -94,7 +94,6 @@ defmodule Hammer.ETS do
       1 ->
         {:reply, :ok, state}
       _ ->  # Notably, this fails if old buckets haven't been pruned yet
-    end
         {:reply, :error, state}
     end
   end

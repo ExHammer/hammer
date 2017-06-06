@@ -140,6 +140,12 @@ defmodule Hammer do
     end
   end
 
+  def handle_call({:delete_bucket, id}, _from, state) do
+    %{backend: backend} = state
+    result = apply(backend, :delete_bucket, [id])
+    {:reply, result, state}
+  end
+
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :ok, state}
   end

@@ -39,8 +39,8 @@ defmodule Hammer.ETS do
     GenServer.call(__MODULE__, {:get_bucket, key})
   end
 
-  def delete_bucket(key) do
-    GenServer.call(__MODULE__, {:delete_bucket, key})
+  def delete_bucket(id) do
+    GenServer.call(__MODULE__, {:delete_bucket, id})
   end
 
   def prune_expired_buckets() do
@@ -96,10 +96,18 @@ defmodule Hammer.ETS do
     {:reply, result, state}
   end
 
-  def handle_call({:delete_bucket, key}, _from, state) do
+  # TODO: re-assess this api
+  def handle_call({:delete_bucket, id}, _from, state) do
     %{ets_table_name: tn} = state
-    :ets.delete(tn, key)
-    {:reply, :ok, state}
+    # fun do {{bucket_number, bid},_,_,_} when bid == ^id -> true end
+    case :ets.select_delete(
+      tn, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}]
+    ) do
+      1 ->
+        {:reply, :ok, state}
+      _ ->
+        {:reply, :error, state}
+    end
   end
 
   def handle_call(:prune_expired_buckets, _from, state) do

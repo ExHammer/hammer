@@ -26,10 +26,6 @@ defmodule Hammer do
     GenServer.start_link(__MODULE__, args_with_defaults, name: __MODULE__)
   end
 
-  def ping() do
-    GenServer.call(__MODULE__, :ping)
-  end
-
   @doc """
   Check if the action you wish to take is within the rate limit bounds
   and increment the buckets counter by 1 and its updated_at timestamp.
@@ -112,11 +108,6 @@ defmodule Hammer do
     apply(backend_mod, :setup, [])
     :timer.send_interval(cleanup_rate, :prune)
     {:ok, %{backend: backend_mod}}
-  end
-
-  def handle_call(:ping, _from, %{backend: backend_mod}=state) do
-    result = apply(backend_mod, :ping, [])
-    {:reply, result, state}
   end
 
   def handle_call({:check_rate, id, scale, limit}, _from, state) do

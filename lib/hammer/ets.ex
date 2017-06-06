@@ -1,5 +1,4 @@
 defmodule Hammer.ETS do
-  require Logger
   use GenServer
   @moduledoc """
   An ETS backend for Hammer
@@ -61,7 +60,6 @@ defmodule Hammer.ETS do
   end
 
   def handle_call(:setup, _from, state) do
-    Logger.log(:info, "Setup #{__MODULE__}")
     %{ets_table_name: tn} = state
     :ets.new(tn, [:named_table, :ordered_set, :private])
     {:reply, :ok, state}
@@ -111,7 +109,6 @@ defmodule Hammer.ETS do
   end
 
   def handle_call(:prune_expired_buckets, _from, state) do
-    Logger.log(:info, "Pruning expired buckets")
     {:reply, :ok, state}
   end
 

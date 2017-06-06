@@ -121,7 +121,8 @@ defmodule Hammer do
 
   def handle_call({:check_rate, id, scale, limit}, _from, state) do
     %{backend: backend} = state
-    {stamp, key} = stamp_key(id, scale)
+    {stamp, key} = Hammer.Utils.stamp_key(id, scale)
+    IO.inspect("Check Rate: #{stamp}, #{inspect(key)}")
     result = case apply(backend, :count_hit, [key, stamp]) do
       {:ok, count} ->
         if (count > limit) do
@@ -135,9 +136,18 @@ defmodule Hammer do
     {:reply, result, state}
   end
 
-
-
-
+  def handle_call({:inspect_bucket, id, scale, limit}, _from, state) do
+    %{backend: backend} = state
+    {stamp, key} = Hammer.Utils.stamp_key(id, scale)
+    ms_to_next_bucket = (elem(key, 0) * scale) + scale - stamp
+    case apply(backend, :get_bucket, [key]) do
+      nil ->
+        {0, limit, ms_to_next_bucket, nil, nil}
+      {_, count, created_at, updated_at} ->
+        count_remaining = if limit > count, do: limit - count, else: 0
+        {count, count_remaining, ms_to_next_bucket, created_at, updated_at}
+    end
+  end
 
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :ok, state}
@@ -147,14 +157,6 @@ defmodule Hammer do
     %{backend: backend} = state
     apply(backend, :prune_expired_buckets, [])
     {:noreply, state}
-  end
-
-  ## Private Helpers
-  defp stamp_key(id, scale) do
-    stamp         = Hammer.Utils.timestamp()
-    bucket_number = trunc(stamp/scale)      # with scale = 1 bucket changes every millisecond
-    key           = {bucket_number, id}
-    {stamp, key}
   end
 
 end

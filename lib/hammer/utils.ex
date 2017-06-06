@@ -5,4 +5,11 @@ defmodule Hammer.Utils do
     DateTime.utc_now() |> DateTime.to_unix(:millisecond)
   end
 
+  # Returns tuple of {timestamp, key}, where key is {bucket_number, id}
+  def stamp_key(id, scale) do
+    stamp         = Hammer.Utils.timestamp()
+    bucket_number = trunc(stamp/scale)      # with scale = 1 bucket changes every millisecond
+    key           = {bucket_number, id}
+    {stamp, key}
+  end
 end

@@ -35,8 +35,8 @@ defmodule Hammer.ETS do
     GenServer.call(__MODULE__, {:count_hit, key, stamp})
   end
 
-  def inspect_bucket(key) do
-    GenServer.call(__MODULE__, {:inspect_bucket, key})
+  def get_bucket(key) do
+    GenServer.call(__MODULE__, {:get_bucket, key})
   end
 
   def delete_bucket(key) do
@@ -72,11 +72,9 @@ defmodule Hammer.ETS do
   end
 
   def handle_call({:bucket_exists?, key}, _from, state) do
-    {:reply, false, state}
-  end
-
-  def handle_call({:delete_bucket, key}, _from, state) do
-    {:reply, :ok, state}
+    %{ets_table_name: tn} = state
+    exists? = :ets.member(tn, key)
+    {:reply, exists?, state}
   end
 
   def handle_call({:count_hit, key, stamp}, _from, state) do
@@ -89,6 +87,23 @@ defmodule Hammer.ETS do
         [count, _, _] = :ets.update_counter(tn, key, [{2,1},{3,0},{4,1,0, stamp}])
         {:reply, {:ok, count}, state}
     end
+  end
+
+  def handle_call({:get_bucket, key}, _from, state) do
+    %{ets_table_name: tn} = state
+    result = case :ets.lookup(tn, key) do
+      [] ->
+        nil
+      [bucket] ->
+        bucket
+    end
+    {:reply, result, state}
+  end
+
+  def handle_call({:delete_bucket, key}, _from, state) do
+    %{ets_table_name: tn} = state
+    :ets.delete(tn, key)
+    {:reply, :ok, state}
   end
 
   def handle_call(:prune_expired_buckets, _from, state) do

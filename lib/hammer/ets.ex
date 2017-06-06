@@ -7,7 +7,7 @@ defmodule Hammer.ETS do
   ## Public API
 
   def start_link() do
-    start_link(%{})
+    start_link([])
   end
 
   def start_link(args) do
@@ -46,7 +46,7 @@ defmodule Hammer.ETS do
   ## GenServer Callbacks
 
   def init(args) do
-    ets_table_name = Map.get(args, :ets_table_name, :hammer_ets_buckets)
+    ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
     state = %{ets_table_name: ets_table_name}
     {:ok, state}
   end

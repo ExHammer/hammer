@@ -17,11 +17,12 @@ defmodule Hammer do
       Hammer.start_link(%{backend: Hammer.ETS})
   """
   def start_link(args, _opts \\ []) do
-    args_with_defaults = Map.merge(
-      %{backend: Hammer.ETS,
-        cleanup_rate: 60 * 1000,
-        timeout: 90_000_000},  # Is timout necessary?
-      args
+    args_with_defaults = Keyword.merge(
+      [backend: Hammer.ETS,
+       cleanup_rate: 60 * 1000,
+       timeout: 90_000_000],  # Is timeout necessary?
+      args,
+      fn (_k, _a, b) -> b end
     )
     GenServer.start_link(__MODULE__, args_with_defaults, name: __MODULE__)
   end
@@ -104,7 +105,8 @@ defmodule Hammer do
   ## GenServer Callbacks
 
   def init(args) do
-    %{backend: backend_mod, cleanup_rate: cleanup_rate} = args
+    backend_mod = Keyword.get(args, :backend)
+    cleanup_rate = Keyword.get(args, :cleanup_rate)
     apply(backend_mod, :setup, [])
     :timer.send_interval(cleanup_rate, :prune)
     {:ok, %{backend: backend_mod}}

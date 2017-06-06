@@ -93,7 +93,8 @@ defmodule Hammer.ETS do
     ) do
       1 ->
         {:reply, :ok, state}
-      _ ->
+      _ ->  # Notably, this fails if old buckets haven't been pruned yet
+    end
         {:reply, :error, state}
     end
   end
@@ -101,9 +102,5 @@ defmodule Hammer.ETS do
   def handle_call(:prune_expired_buckets, _from, state) do
     {:reply, :ok, state}
   end
-
-
-  ## Private Helpers
-
 
 end

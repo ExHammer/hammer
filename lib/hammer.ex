@@ -16,15 +16,18 @@ defmodule Hammer do
   Example:
       Hammer.start_link(%{backend: Hammer.ETS})
   """
-  def start_link(args, _opts \\ []) do
+  def start_link(args, opts \\ []) do
     args_with_defaults = Keyword.merge(
       [backend: Hammer.ETS,
-       cleanup_rate: 60 * 1000,
-       timeout: 90_000_000],  # Is timeout necessary?
+       cleanup_rate: 60 * 1000],  # Is timeout necessary?
       args,
       fn (_k, _a, b) -> b end
     )
-    GenServer.start_link(__MODULE__, args_with_defaults, name: __MODULE__)
+    GenServer.start_link(
+      __MODULE__,
+      args_with_defaults,
+      Keyword.merge(opts, name: __MODULE__)
+    )
   end
 
   @doc """
@@ -98,8 +101,8 @@ defmodule Hammer do
     GenServer.call(__MODULE__, {:delete_bucket, id})
   end
 
-  def stop(server) do
-    GenServer.call(server, :stop)
+  def stop() do
+    GenServer.call(__MODULE__, :stop)
   end
 
   ## GenServer Callbacks
@@ -133,13 +136,14 @@ defmodule Hammer do
     %{backend: backend} = state
     {stamp, key} = Hammer.Utils.stamp_key(id, scale)
     ms_to_next_bucket = (elem(key, 0) * scale) + scale - stamp
-    case apply(backend, :get_bucket, [key]) do
+    result = case apply(backend, :get_bucket, [key]) do
       nil ->
         {0, limit, ms_to_next_bucket, nil, nil}
       {_, count, created_at, updated_at} ->
         count_remaining = if limit > count, do: limit - count, else: 0
         {count, count_remaining, ms_to_next_bucket, created_at, updated_at}
     end
+    {:reply, result, state}
   end
 
   def handle_call({:delete_bucket, id}, _from, state) do

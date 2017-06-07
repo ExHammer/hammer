@@ -8,13 +8,6 @@ defmodule Hammer do
   ## Public API
 
   @doc """
-  Starts the Hammer server.
-
-  Args:
-  - backend: Name of backend process to use
-
-  Example:
-      Hammer.start_link(%{backend: Hammer.ETS})
   """
   def start_link(args, opts \\ []) do
     args_with_defaults = Keyword.merge(
@@ -31,46 +24,12 @@ defmodule Hammer do
   end
 
   @doc """
-  Check if the action you wish to take is within the rate limit bounds
-  and increment the buckets counter by 1 and its updated_at timestamp.
-
-  ## Arguments:
-
-  - `id` (String) name of the bucket
-  - `scale` (Integer) of time in ms until the bucket rolls over.
-    (e.g. 60_000 = empty bucket every minute)
-  - `limit` (Integer) the max size of a counter the bucket can hold.
-
-  ## Examples
-
-  # Limit to 2500 API requests in one day.
-  iex> ExRated.check_rate("my-bucket", 86400000, 2500)
-  {:ok, 1}
   """
   def check_rate(id, scale, limit) do
     GenServer.call(__MODULE__, {:check_rate, id, scale, limit})
   end
 
   @doc """
-  Inspect bucket to get count, count_remaining, ms_to_next_bucket, created_at, updated_at.
-  This function is free of side-effects and should be called with the same arguments you
-  would use for `check_rate` if you intended to increment and check the bucket counter.
-
-  ## Arguments:
-
-  - `id` (String) name of the bucket
-  - `scale` (Integer) of time the bucket you want to inspect was created with.
-  - `limit` (Integer) representing the max counter size the bucket was created with.
-
-  ## Example - Reset counter for my-bucket
-
-      ExRated.inspect_bucket("my-bucket", 86400000, 2500)
-      {0, 2500, 29389699, nil, nil}
-      ExRated.check_rate("my-bucket", 86400000, 2500)
-      {:ok, 1}
-      ExRated.inspect_bucket("my-bucket", 86400000, 2500)
-      {1, 2499, 29381612, 1450281014468, 1450281014468}
-
   """
   @spec inspect_bucket(id::String.t, scale::integer, limit::integer) :: {count::integer,
                                                                          count_remaining::integer,
@@ -82,19 +41,6 @@ defmodule Hammer do
   end
 
   @doc """
-  Delete bucket to reset the counter.
-
-  ## Arguments:
-
-  - `id` (String) name of the bucket
-
-  ## Example - Reset counter for my-bucket
-
-  iex> ExRated.check_rate("my-bucket", 86400000, 2500)
-  {:ok, 1}
-  iex> ExRated.delete_bucket("my-bucket")
-  :ok
-
   """
   @spec delete_bucket(id::String.t) :: :ok | :error
   def delete_bucket(id) do

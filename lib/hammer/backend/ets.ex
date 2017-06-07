@@ -1,4 +1,4 @@
-defmodule Hammer.ETS do
+defmodule Hammer.Backend.ETS do
   use GenServer
   @moduledoc """
   An ETS backend for Hammer

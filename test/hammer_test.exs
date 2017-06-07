@@ -2,8 +2,9 @@ defmodule HammerTest do
   use ExUnit.Case, async: true
 
   setup _context do
-    {:ok, pid} = start_server()
-    {:ok, exrated_server: pid}
+    {:ok, _hammer_ets_pid} = Hammer.Backend.ETS.start_link()
+    {:ok, hammer_pid} = Hammer.start_link(backend: Hammer.Backend.ETS)
+    {:ok, hammer_server: hammer_pid}
   end
 
   test "returns {:ok, 1} tuple on first access" do
@@ -60,10 +61,6 @@ defmodule HammerTest do
     assert :error = Hammer.delete_bucket("unknown-bucket")
   end
 
-  defp start_server() do
-    {:ok, _hammer_ets_pid} = Hammer.ETS.start_link()
-    Hammer.start_link(backend: Hammer.ETS)
-  end
 end
 
 

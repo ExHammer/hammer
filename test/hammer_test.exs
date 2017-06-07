@@ -19,6 +19,7 @@ defmodule UtilsTest do
     id = "test_one_two"
     {stamp, key} = Hammer.Utils.stamp_key(id, 60_000)
     assert is_integer(stamp)
+    assert is_tuple(key)
     {bucket_number, b_id} = key
     assert is_integer(bucket_number)
     assert b_id == id

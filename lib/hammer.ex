@@ -118,7 +118,6 @@ defmodule Hammer do
   def handle_call({:check_rate, id, scale, limit}, _from, state) do
     %{backend: backend} = state
     {stamp, key} = Hammer.Utils.stamp_key(id, scale)
-    IO.inspect("Check Rate: #{stamp}, #{inspect(key)}")
     result = case apply(backend, :count_hit, [key, stamp]) do
       {:ok, count} ->
         if (count > limit) do

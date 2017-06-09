@@ -44,6 +44,9 @@ end
 
 ```
 
+See the [Hammer Testbed](https://github.com/ExHammer/hammer-testbed) app for an example of
+using Hammer in a Phoenix application.
+
 
 ## API
 

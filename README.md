@@ -20,6 +20,31 @@ and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/hammer](https://hexdocs.pm/hammer).
 
 
+## Usage
+
+Example:
+
+```elixir
+
+defmodule MyApp.RateLimiter do
+  use Supervisor
+
+  def start_link() do
+    Supervisor.start_link(__MODULE__, :ok)
+  end
+
+  def init(:ok) do
+    children = [
+      worker(Hammer.Backend.ETS, []),
+      worker(Hammer, [[backend: Hammer.Backend.ETS]])
+    ]
+    supervise(children, strategy: :one_for_one, name: MyApp.RateLimiter)
+  end
+end
+
+```
+
+
 ## API
 
 ### `Hammer.start_link(args, genserver_opts)`

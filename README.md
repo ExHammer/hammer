@@ -57,7 +57,9 @@ Start the Hammer GenServer process.
 The `args` are a keyword-list of:
 
 - `backend`: The backend module to use (default: `Hammer.ETS`)
-- `cleanup_rate`: time in milliseconds between cleanup runs (default: `60000`)
+- `cleanup_rate`: time in milliseconds between cleanup runs (default: `600_000`, or ten minutes)
+- `expiry`: time in milliseconds after which buckets will be deleted (default: `7200000`, or two hours)
+  In general, expiry should be set to a time suitably longer than the maximum expected bucket timespan.
 
 The `genserver_opts` are the usual GenServer options, except `name`, which is
 ignored (subject to change in a later release).
@@ -106,3 +108,50 @@ Stop the Hammer GenServer.
 
 
 ## Backend API
+
+
+
+
+### setup()
+
+This function is called whenever the Hammer process is initialized.
+Use this as a hook to do any necessary setup.
+
+Returns: The atom `:ok` or tuple of `{:error, reason}`
+
+
+### count_hit(key, timestamp)
+
+- `key`: The key of the current bucket
+- `timestamp`: The current timestamp (integer)
+
+Returns: Either a Tuple of `{:ok, count}` where count is the current count of the bucket,
+or `{:error, reason}`.
+
+
+### get_bucket(key)
+
+- `key`: The key of the current bucket
+
+Returns: Either a tuple of `{:ok, bucket}`, where `bucket` is a tuple of
+`{key, count, created_at, updated_at}`, key is, as usual, a tuple of `{bucket_number, id}`,
+`count` is the count of hits in the bucket, `created_at` and `updated_at` are integer timestamps,
+or `{:error, reason}`
+
+
+### delete_bucket(id)
+
+- `id`: rate-limit id to delete
+
+Returns: Either `:ok`, or `{:error, reason}`
+
+
+### prune_expired_buckets(timestamp)
+
+- `timestamp`: current timestamp (integer)
+
+Returns: Either `:ok`, or `{:error, reason}`
+
+
+
+## Implementing Backends

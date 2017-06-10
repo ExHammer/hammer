@@ -5,6 +5,9 @@ defmodule Hammer do
   Documentation for Hammer.
   """
 
+  @default_cleanup_rate 60 * 1000 * 10
+  @default_expiry 60 * 1000 * 60 * 2
+
   ## Public API
 
   @doc """
@@ -12,7 +15,8 @@ defmodule Hammer do
   def start_link(args, opts \\ []) do
     args_with_defaults = Keyword.merge(
       [backend: Hammer.ETS,
-       cleanup_rate: 60 * 1000],  # Is timeout necessary?
+       cleanup_rate: @default_cleanup_rate,
+       expiry: @default_expiry],
       args,
       fn (_k, _a, b) -> b end
     )
@@ -56,7 +60,7 @@ defmodule Hammer do
   def init(args) do
     backend_mod = Keyword.get(args, :backend)
     cleanup_rate = Keyword.get(args, :cleanup_rate)
-    apply(backend_mod, :setup, [])
+    :ok = apply(backend_mod, :setup, [])
     :timer.send_interval(cleanup_rate, :prune)
     {:ok, %{backend: backend_mod}}
   end
@@ -102,8 +106,10 @@ defmodule Hammer do
   end
 
   def handle_info(:prune, state) do
-    %{backend: backend} = state
-    apply(backend, :prune_expired_buckets, [])
+    %{backend: backend, expiry: expiry} = state
+    now = Hammer.Utils.timestamp()
+    expire_before = now - expiry
+    apply(backend, :prune_expired_buckets, [now, expire_before])
     {:noreply, state}
   end
 

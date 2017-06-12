@@ -11,6 +11,12 @@ defmodule Hammer do
   ## Public API
 
   @doc """
+  Starts the Hammer GenServer.
+  Args:
+  - `backend`: Backend module to use for storage, default `Hammer.Backend.ETS`
+  - `cleanup_rate`: Milliseconds between cleanup runs, default `#{@default_cleanup_rate}`
+  - `expiry`: Time in milliseconds after which to clean-up buckets, default `#{@default_expiry}`,
+    should be set to longer than the maximum expected bucket time-span.
   """
   def start_link() do
     start_link([])
@@ -32,12 +38,49 @@ defmodule Hammer do
   end
 
   @doc """
+  Check if the action you wish to perform is within the bounds of the rate-limit.
+
+  Args:
+  - `id`: String name of the bucket. Usually the bucket name is comprised of some fixed prefix,
+    with some dynamic string appended, such as an IP address or user id.
+  - `scale`: Integer indicating size of bucket in milliseconds
+  - `limit`: Integer maximum count of actions within the bucket
+
+  Returns either `{:allow,  count}`, `{:deny,   limit}` or `{:error,  reason}`
+
+  Example:
+      user_id = 42076
+      case  Hammer.check_rate("file_upload:#{user_id}", 60_000, 5) do
+        {:allow, _count} ->
+          # do the file upload
+        {:deny, limit} ->
+          # render an error page or something
+      end
   """
+  @spec check_rate(id::String.t, scale::integer, limit::integer) :: {:allow, count::integer}
+                                                                  | {:deny,  limit::integer}
+                                                                  | {:error, reason}
   def check_rate(id, scale, limit) do
     GenServer.call(__MODULE__, {:check_rate, id, scale, limit})
   end
 
   @doc """
+  Inspect bucket to get count, count_remaining, ms_to_next_bucket, created_at, updated_at.
+  This function is free of side-effects and should be called with the same arguments you
+  would use for `check_rate` if you intended to increment and check the bucket counter.
+
+  Arguments:
+
+  - `id`: String name of the bucket. Usually the bucket name is comprised of some fixed prefix,
+  with some dynamic string appended, such as an IP address or user id.
+  - `scale`: Integer indicating size of bucket in milliseconds
+  - `limit`: Integer maximum count of actions within the bucket
+
+  Example:
+
+      Hammer.inspect_bucket("file_upload:2042", 60_000, 5)
+      {1, 2499, 29381612, 1450281014468, 1450281014468}
+
   """
   @spec inspect_bucket(id::String.t, scale::integer, limit::integer) :: {count::integer,
                                                                          count_remaining::integer,

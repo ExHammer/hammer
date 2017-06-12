@@ -41,7 +41,7 @@ defmodule HammerTest do
     assert {:allow, 1} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:allow, 2} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:deny, 2} = Hammer.check_rate("my-bucket", 1000, 2)
-    :timer.sleep 1000
+    :timer.sleep 1001
     assert {:allow, 1} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:allow, 2} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:deny, 2} = Hammer.check_rate("my-bucket", 1000, 2)

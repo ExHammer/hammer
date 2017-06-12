@@ -14,7 +14,7 @@ defmodule Hammer do
   """
   def start_link(args, opts \\ []) do
     args_with_defaults = Keyword.merge(
-      [backend: Hammer.ETS,
+      [backend: Hammer.Backend.ETS,
        cleanup_rate: @default_cleanup_rate,
        expiry: @default_expiry],
       args,

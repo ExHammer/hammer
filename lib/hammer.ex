@@ -55,6 +55,10 @@ defmodule Hammer do
     GenServer.call(__MODULE__, :stop)
   end
 
+  def make_rate_checker(id_prefix, scale, limit) do
+    fn (id) -> check_rate("#{id_prefix}#{id}", scale, limit) end
+  end
+
   ## GenServer Callbacks
 
   def init(args) do
@@ -71,12 +75,12 @@ defmodule Hammer do
     result = case apply(backend, :count_hit, [key, stamp]) do
       {:ok, count} ->
         if (count > limit) do
-          {:error, limit}
+          {:deny, limit}
         else
-          {:ok, count}
+          {:allow, count}
         end
-      {:error, _reason} ->
-         {:error, limit}
+      {:error, reason} ->
+         {:error, reason}
     end
     {:reply, result, state}
   end

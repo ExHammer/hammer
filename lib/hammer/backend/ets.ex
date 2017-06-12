@@ -39,7 +39,7 @@ defmodule Hammer.Backend.ETS do
   end
 
   def prune_expired_buckets(stamp, expire_before) do
-    GenServer.call(__MODULE__, {:prune_expired_buckets, expire_before})
+    GenServer.call(__MODULE__, {:prune_expired_buckets, stamp, expire_before})
   end
 
 
@@ -98,7 +98,7 @@ defmodule Hammer.Backend.ETS do
     end
   end
 
-  def handle_call({:prune_expired_buckets, expire_before}, _from, state) do
+  def handle_call({:prune_expired_buckets, _stamp, expire_before}, _from, state) do
     %{ets_table_name: tn} = state
     :ets.select_delete(tn, [{{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}])
     {:reply, :ok, state}

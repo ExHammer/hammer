@@ -68,9 +68,11 @@ defmodule Hammer do
   def init(args) do
     backend_mod = Keyword.get(args, :backend)
     cleanup_rate = Keyword.get(args, :cleanup_rate)
+    expiry = Keyword.get(args, :expiry)
     :ok = apply(backend_mod, :setup, [])
     :timer.send_interval(cleanup_rate, :prune)
-    {:ok, %{backend: backend_mod}}
+    state = %{backend: backend_mod, cleanup_rate: cleanup_rate, expiry: expiry}
+    {:ok, state}
   end
 
   def handle_call({:check_rate, id, scale, limit}, _from, state) do
@@ -117,7 +119,7 @@ defmodule Hammer do
     %{backend: backend, expiry: expiry} = state
     now = Hammer.Utils.timestamp()
     expire_before = now - expiry
-    apply(backend, :prune_expired_buckets, [now, expire_before])
+    :ok = apply(backend, :prune_expired_buckets, [now, expire_before])
     {:noreply, state}
   end
 

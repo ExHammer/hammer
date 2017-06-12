@@ -12,6 +12,10 @@ defmodule Hammer do
 
   @doc """
   """
+  def start_link() do
+    start_link([])
+  end
+
   def start_link(args, opts \\ []) do
     args_with_defaults = Keyword.merge(
       [backend: Hammer.Backend.ETS,

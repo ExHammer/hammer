@@ -50,16 +50,16 @@ defmodule Hammer do
 
   Example:
       user_id = 42076
-      case  Hammer.check_rate("file_upload:#{user_id}", 60_000, 5) do
+      case  Hammer.check_rate("file_upload:\#{user_id}", 60_000, 5) do
         {:allow, _count} ->
           # do the file upload
-        {:deny, limit} ->
+        {:deny, _limit} ->
           # render an error page or something
       end
   """
   @spec check_rate(id::String.t, scale::integer, limit::integer) :: {:allow, count::integer}
                                                                   | {:deny,  limit::integer}
-                                                                  | {:error, reason}
+                                                                  | {:error, reason::String.t}
   def check_rate(id, scale, limit) do
     GenServer.call(__MODULE__, {:check_rate, id, scale, limit})
   end
@@ -92,18 +92,67 @@ defmodule Hammer do
   end
 
   @doc """
+  Delete all buckets belonging to the provided id, including the current one.
+  Effectively resets the rate-limit for the id.
+
+  Arguments:
+
+  - `id`: String name of the bucket
+
+  Returns either `{:ok, count}` where count is the number of buckets deleted,
+  or `{:error, reason}`.
+
+  Example:
+
+      user_id = 2406
+      {:ok, _count} = Hammer.delete_buckets("file_uploads:\#{user_id}")
   """
-  @spec delete_bucket(id::String.t) :: :ok | :error
-  def delete_bucket(id) do
-    GenServer.call(__MODULE__, {:delete_bucket, id})
+  @spec delete_buckets(id::String.t) :: {:ok, count::integer } | {:error, reason::String.t}
+  def delete_buckets(id) do
+    GenServer.call(__MODULE__, {:delete_buckets, id})
   end
 
+  @doc """
+  Stops the Hammer GenServer
+  """
+  @spec stop() :: :ok
   def stop() do
     GenServer.call(__MODULE__, :stop)
   end
 
+  @doc """
+  Make a rate-checker function, with the given `id` prefix, scale and limit.
+
+  Arguments:
+
+  - `id_prefix`: String prefix to the `id`
+  - `scale`: Integer indicating size of bucket in milliseconds
+  - `limit`: Integer maximum count of actions within the bucket
+
+  Returns a function which accepts an `id` suffix, which will be combined with the `id_prefix`.
+  Calling this returned function is equivalent to:
+  `Hammer.check_rate("\#{id_prefix}\#{id}", scale, limit)`
+
+  Example:
+
+      chat_rate_limiter = Hammer.make_rate_checker("send_chat_message:", 60_000, 20)
+      user_id = 203517
+      case chat_rate_limiter.(user_id) do
+        {:allow, _count} ->
+          # allow chat message
+        {:deny, _limit} ->
+          # deny
+      end
+
+  """
+  @spec make_rate_checker(id_prefix::String.t, scale::integer, limit::integer)
+        :: ((id::String.t) -> {:allow, count::integer}
+                       | {:deny,  limit::integer}
+                       | {:error, reason::String.t})
   def make_rate_checker(id_prefix, scale, limit) do
-    fn (id) -> check_rate("#{id_prefix}#{id}", scale, limit) end
+    fn (id) ->
+      check_rate("#{id_prefix}#{id}", scale, limit)
+    end
   end
 
   ## GenServer Callbacks
@@ -148,9 +197,9 @@ defmodule Hammer do
     {:reply, result, state}
   end
 
-  def handle_call({:delete_bucket, id}, _from, state) do
+  def handle_call({:delete_buckets, id}, _from, state) do
     %{backend: backend} = state
-    result = apply(backend, :delete_bucket, [id])
+    result = apply(backend, :delete_buckets, [id])
     {:reply, result, state}
   end
 

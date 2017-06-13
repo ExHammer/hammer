@@ -59,18 +59,18 @@ defmodule HammerTest do
     assert ms_to_next_bucket < 1000
   end
 
-  test "returns expected tuples on delete_bucket" do
+  test "returns expected tuples on delete_buckets" do
     assert {:allow, 1} = Hammer.check_rate("my-bucket1", 1000, 2)
     assert {:allow, 2} = Hammer.check_rate("my-bucket1", 1000, 2)
     assert {:deny, 2} = Hammer.check_rate("my-bucket1", 1000, 2)
     assert {:allow, 1} = Hammer.check_rate("my-bucket2", 1000, 2)
     assert {:allow, 2} = Hammer.check_rate("my-bucket2", 1000, 2)
     assert {:deny, 2} = Hammer.check_rate("my-bucket2", 1000, 2)
-    assert :ok = Hammer.delete_bucket("my-bucket1")
+    assert {:ok, 1} = Hammer.delete_buckets("my-bucket1")
     assert {:allow, 1} = Hammer.check_rate("my-bucket1", 1000, 2)
     assert {:deny, 2} = Hammer.check_rate("my-bucket2", 1000, 2)
 
-    assert :error = Hammer.delete_bucket("unknown-bucket")
+    assert {:ok, 0} = Hammer.delete_buckets("unknown-bucket")
   end
 
 end

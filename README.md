@@ -50,15 +50,10 @@ defmodule MyApp.VideoUpload do
     case Hammer.check_rate("upload_video:#{user_id}", 60_000, 5) do
       {:allow, _count} ->
         # upload the video, somehow
-
       {:deny, _limit} ->
         # deny the request
-
     end
-
   end
-
-
 
 end
 

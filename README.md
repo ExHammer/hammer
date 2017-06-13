@@ -42,74 +42,41 @@ defmodule MyApp.RateLimiter do
   end
 end
 
+defmodule MyApp.VideoUpload do
+
+  ...
+
+  def upload(video_data, user_id) do
+    case Hammer.check_rate("upload_video:#{user_id}", 60_000, 5) do
+      {:allow, _count} ->
+        # upload the video, somehow
+
+      {:deny, _limit} ->
+        # deny the request
+
+    end
+
+  end
+
+
+
+end
+
 ```
 
 See the [Hammer Testbed](https://github.com/ExHammer/hammer-testbed) app for an example of
 using Hammer in a Phoenix application.
 
 
-## API
 
-### `Hammer.start_link(args, genserver_opts)`
-
-Start the Hammer GenServer process.
-
-The `args` are a keyword-list of:
-
-- `backend`: The backend module to use (default: `Hammer.ETS`)
-- `cleanup_rate`: time in milliseconds between cleanup runs (default: `600_000`, or ten minutes)
-- `expiry`: time in milliseconds after which buckets will be deleted (default: `7200000`, or two hours)
-  In general, expiry should be set to a time suitably longer than the maximum expected bucket timespan.
-
-The `genserver_opts` are the usual GenServer options, except `name`, which is
-ignored (subject to change in a later release).
-
-Returns: The usual GenServer return values.
-
-
-### `Hammer.check_rate(id, scale, limit)`
-
-Check if a rate-limit has been reached.
-
-- `id`: String id of the limit to be checked (example: `"file_upload"`)
-- `scale`: Integer timescale to limit within, in milliseconds (example: `30000`)
-- `limit`: Integer limit to apply within the timescale (example: `10`)
-
-Returns: Either `{:ok, count}` where `count` is the number of hits in the current timescale,
-or if the limit has been reached, `{:error, limit}` where `limit` is the limit that has been reached.
-
-
-### `Hammer.inspect_bucket(id, scale, limit)`
-
-Get a data-structure describing the current "bucket" for the rate-limit.
-
-- `id`: String id of the limit to be checked (example: `"file_upload"`)
-- `scale`: Integer timescale to limit within, in milliseconds (example: `30000`)
-- `limit`: Integer limit to apply within the timescale (example: `10`)
-
-Returns: A tuple of `{count, count_remaining, ms_to_next_bucket, created_at, updated_at}`,
-
-
-### `Hammer.delete_bucket(id)`
-
-Deletes the current bucket for the given `id`.
-
-*Note, this is subject to change*
-
-- `id`: String id of the limit to be deleted (example: `"file_upload"`)
-
-Returns: Either `:ok` or `:error`
-
-
-### `Hammer.stop()`
-
-Stop the Hammer GenServer.
+## Available Backends
 
 
 
-## Backend API
+## Writing a Backend
 
 
+The backend api is as follows:
 
 
 ### setup()
@@ -139,11 +106,11 @@ Returns: Either a tuple of `{:ok, bucket}`, where `bucket` is a tuple of
 or `{:error, reason}`
 
 
-### delete_bucket(id)
+### delete_buckets(id)
 
 - `id`: rate-limit id to delete
 
-Returns: Either `:ok`, or `{:error, reason}`
+Returns: Either `{:ok, count}`, or `{:error, reason}`
 
 
 ### prune_expired_buckets(timestamp)
@@ -151,7 +118,3 @@ Returns: Either `:ok`, or `{:error, reason}`
 - `timestamp`: current timestamp (integer)
 
 Returns: Either `:ok`, or `{:error, reason}`
-
-
-
-## Implementing Backends

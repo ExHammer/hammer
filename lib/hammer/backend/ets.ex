@@ -49,7 +49,7 @@ defmodule Hammer.Backend.ETS do
   """
   @spec get_bucket(key::{bucket::integer, id::String.t})
         :: nil
-         | {key::{bucket::integer, id::String.t}, count:integer, created::integer, updated::integer}
+         | {key::{bucket::integer, id::String.t}, count::integer, created::integer, updated::integer}
   def get_bucket(key) do
     GenServer.call(__MODULE__, {:get_bucket, key})
   end
@@ -59,7 +59,7 @@ defmodule Hammer.Backend.ETS do
   """
   @spec delete_buckets(id::String.t)
         :: {:ok, count_deleted::integer}
-         | {:error, reason}
+         | {:error, reason::String.t}
   def delete_buckets(id) do
     GenServer.call(__MODULE__, {:delete_buckets, id})
   end
@@ -69,7 +69,7 @@ defmodule Hammer.Backend.ETS do
   """
   @spec prune_expired_buckets(now::integer, expire_before::integer)
         :: :ok
-         | {:error, reason}
+         | {:error, reason::String.t}
   def prune_expired_buckets(now, expire_before) do
     GenServer.call(__MODULE__, {:prune_expired_buckets, now, expire_before})
   end

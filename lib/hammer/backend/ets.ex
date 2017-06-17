@@ -2,6 +2,12 @@ defmodule Hammer.Backend.ETS do
   use GenServer
   @moduledoc """
   An ETS backend for Hammer
+
+  The public API of this module is used by Hammer to store information about rate-limit 'buckets'.
+  A bucket is identified by a `key`, which is a tuple `{bucket_number, id}`.
+  The essential schema of a bucket is: `{key, count, created_at, updated_at}`, although backends
+  are free to store and retrieve this data in whichever way they wish.
+
   """
 
   ## Public API
@@ -18,28 +24,54 @@ defmodule Hammer.Backend.ETS do
     GenServer.call(__MODULE__, :stop)
   end
 
-  def ping() do
-    GenServer.call(__MODULE__, :ping)
-  end
-
+  @doc """
+  Setup function, called once when the Hammer server is initialised
+  """
+  @spec setup()
+        :: :ok
+          | {:error, reason::String.t}
   def setup() do
     GenServer.call(__MODULE__, :setup)
   end
 
-  def count_hit(key, stamp) do
-    GenServer.call(__MODULE__, {:count_hit, key, stamp})
+  @doc """
+  Record a hit in the bucket identified by `key`
+  """
+  @spec count_hit(key::{bucket::integer, id::String.t}, now::integer)
+        :: {:ok, count::integer}
+         | {:error, reason::String.t}
+  def count_hit(key, now) do
+    GenServer.call(__MODULE__, {:count_hit, key, now})
   end
 
+  @doc """
+  Retrieve information about the bucket identified by `key`
+  """
+  @spec get_bucket(key::{bucket::integer, id::String.t})
+        :: nil
+         | {key::{bucket::integer, id::String.t}, count:integer, created::integer, updated::integer}
   def get_bucket(key) do
     GenServer.call(__MODULE__, {:get_bucket, key})
   end
 
+  @doc """
+  Delete all buckets associated with `id`.
+  """
+  @spec delete_buckets(id::String.t)
+        :: {:ok, count_deleted::integer}
+         | {:error, reason}
   def delete_buckets(id) do
     GenServer.call(__MODULE__, {:delete_buckets, id})
   end
 
-  def prune_expired_buckets(stamp, expire_before) do
-    GenServer.call(__MODULE__, {:prune_expired_buckets, stamp, expire_before})
+  @doc """
+  Delete 'old' buckets which were last updated before `expire_now`.
+  """
+  @spec prune_expired_buckets(now::integer, expire_before::integer)
+        :: :ok
+         | {:error, reason}
+  def prune_expired_buckets(now, expire_before) do
+    GenServer.call(__MODULE__, {:prune_expired_buckets, now, expire_before})
   end
 
 
@@ -61,14 +93,14 @@ defmodule Hammer.Backend.ETS do
     {:reply, :ok, state}
   end
 
-  def handle_call({:count_hit, key, stamp}, _from, state) do
+  def handle_call({:count_hit, key, now}, _from, state) do
     %{ets_table_name: tn} = state
     case :ets.member(tn, key) do
       false ->
-        true = :ets.insert(tn, {key, 1, stamp, stamp})
+        true = :ets.insert(tn, {key, 1, now, now})
         {:reply, {:ok, 1}, state}
       true ->
-        [count, _, _] = :ets.update_counter(tn, key, [{2,1},{3,0},{4,1,0, stamp}])
+        [count, _, _] = :ets.update_counter(tn, key, [{2,1},{3,0},{4,1,0, now}])
         {:reply, {:ok, count}, state}
     end
   end
@@ -93,7 +125,7 @@ defmodule Hammer.Backend.ETS do
     {:reply, {:ok, count_deleted}, state}
   end
 
-  def handle_call({:prune_expired_buckets, _stamp, expire_before}, _from, state) do
+  def handle_call({:prune_expired_buckets, _now, expire_before}, _from, state) do
     %{ets_table_name: tn} = state
     :ets.select_delete(tn, [{{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}])
     {:reply, :ok, state}

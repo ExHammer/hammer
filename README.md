@@ -74,10 +74,18 @@ using Hammer in a Phoenix application.
 The backend api is as follows:
 
 
-### setup()
+### setup(config)
 
 This function is called whenever the Hammer process is initialized.
 Use this as a hook to do any necessary setup.
+
+Config is a map, containing relevant config vars that were used to start Hammer.
+
+Config:
+- `expiry`: expiry time in milliseconds
+
+Expiry is useful if the backing data store supports automatic expiry, in which
+case the `prune_expired_buckets` function can be a no-op.
 
 Returns: The atom `:ok` or tuple of `{:error, reason}`
 

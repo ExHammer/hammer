@@ -27,11 +27,11 @@ defmodule Hammer.Backend.ETS do
   @doc """
   Setup function, called once when the Hammer server is initialised
   """
-  @spec setup()
+  @spec setup(config::map)
         :: :ok
           | {:error, reason::String.t}
-  def setup() do
-    GenServer.call(__MODULE__, :setup)
+  def setup(config) do
+    GenServer.call(__MODULE__, {:setup, config})
   end
 
   @doc """
@@ -87,7 +87,7 @@ defmodule Hammer.Backend.ETS do
     {:stop, :normal, :ok, state}
   end
 
-  def handle_call(:setup, _from, state) do
+  def handle_call({:setup, _config}, _from, state) do
     %{ets_table_name: tn} = state
     :ets.new(tn, [:named_table, :ordered_set, :private])
     {:reply, :ok, state}

@@ -161,7 +161,7 @@ defmodule Hammer do
     backend_mod = Keyword.get(args, :backend)
     cleanup_rate = Keyword.get(args, :cleanup_rate)
     expiry = Keyword.get(args, :expiry)
-    :ok = apply(backend_mod, :setup, [])
+    :ok = apply(backend_mod, :setup, [%{expiry: expiry, cleanup_rate: cleanup_rate}])
     :timer.send_interval(cleanup_rate, :prune)
     state = %{backend: backend_mod, cleanup_rate: cleanup_rate, expiry: expiry}
     {:ok, state}

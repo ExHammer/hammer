@@ -5,8 +5,8 @@ defmodule Hammer do
   Documentation for Hammer.
   """
 
-  @default_cleanup_rate 60 * 1000 * 10
-  @default_expiry 60 * 1000 * 60 * 2
+  @default_cleanup_rate_ms 60 * 1000 * 10
+  @default_expiry_ms 60 * 1000 * 60 * 2
 
   ## Public API
 
@@ -14,8 +14,8 @@ defmodule Hammer do
   Starts the Hammer GenServer.
   Args:
   - `backend`: Backend module to use for storage, default `Hammer.Backend.ETS`
-  - `cleanup_rate`: Milliseconds between cleanup runs, default `#{@default_cleanup_rate}`
-  - `expiry`: Time in milliseconds after which to clean-up buckets, default `#{@default_expiry}`,
+  - `cleanup_rate_ms`: Milliseconds between cleanup runs, default `#{@default_cleanup_rate_ms}`
+  - `expiry_ms`: Time in milliseconds after which to clean-up buckets, default `#{@default_expiry_ms}`,
     should be set to longer than the maximum expected bucket time-span.
   """
   def start_link() do
@@ -25,8 +25,8 @@ defmodule Hammer do
   def start_link(args, opts \\ []) do
     args_with_defaults = Keyword.merge(
       [backend: Hammer.Backend.ETS,
-       cleanup_rate: @default_cleanup_rate,
-       expiry: @default_expiry],
+       cleanup_rate_ms: @default_cleanup_rate_ms,
+       expiry_ms: @default_expiry_ms],
       args,
       fn (_k, _a, b) -> b end
     )
@@ -159,11 +159,11 @@ defmodule Hammer do
 
   def init(args) do
     backend_mod = Keyword.get(args, :backend)
-    cleanup_rate = Keyword.get(args, :cleanup_rate)
-    expiry = Keyword.get(args, :expiry)
-    :ok = apply(backend_mod, :setup, [%{expiry: expiry, cleanup_rate: cleanup_rate}])
-    :timer.send_interval(cleanup_rate, :prune)
-    state = %{backend: backend_mod, cleanup_rate: cleanup_rate, expiry: expiry}
+    cleanup_rate_ms = Keyword.get(args, :cleanup_rate_ms)
+    expiry_ms = Keyword.get(args, :expiry_ms)
+    :ok = apply(backend_mod, :setup, [%{expiry_ms: expiry_ms, cleanup_rate_ms: cleanup_rate_ms}])
+    :timer.send_interval(cleanup_rate_ms, :prune)
+    state = %{backend: backend_mod, cleanup_rate_ms: cleanup_rate_ms, expiry_ms: expiry_ms}
     {:ok, state}
   end
 
@@ -208,9 +208,9 @@ defmodule Hammer do
   end
 
   def handle_info(:prune, state) do
-    %{backend: backend, expiry: expiry} = state
+    %{backend: backend, expiry_ms: expiry_ms} = state
     now = Hammer.Utils.timestamp()
-    expire_before = now - expiry
+    expire_before = now - expiry_ms
     :ok = apply(backend, :prune_expired_buckets, [now, expire_before])
     {:noreply, state}
   end

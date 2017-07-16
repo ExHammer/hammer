@@ -5,7 +5,13 @@ defmodule Hammer do
   @default_expiry_ms 60 * 1000 * 60 * 2
 
   @moduledoc """
-  Documentation for Hammer.
+  Documentation for Hammer module.
+
+  Usage example:
+
+      use Hammer, backend: Hammer.Backend.ETS
+
+  The following functions are created:
 
   # check_rate
 
@@ -21,7 +27,7 @@ defmodule Hammer do
 
   Example:
       user_id = 42076
-      case  Hammer.check_rate("file_upload:\#{user_id}", 60_000, 5) do
+      case  check_rate("file_upload:\#{user_id}", 60_000, 5) do
         {:allow, _count} ->
           # do the file upload
         {:deny, _limit} ->
@@ -44,7 +50,7 @@ defmodule Hammer do
 
   Example:
 
-      Hammer.inspect_bucket("file_upload:2042", 60_000, 5)
+      inspect_bucket("file_upload:2042", 60_000, 5)
       {1, 2499, 29381612, 1450281014468, 1450281014468}
 
 
@@ -63,8 +69,33 @@ defmodule Hammer do
   Example:
 
       user_id = 2406
-      {:ok, _count} = Hammer.delete_buckets("file_uploads:\#{user_id}")
+      {:ok, _count} = delete_buckets("file_uploads:\#{user_id}")
 
+
+  # make_rate_checker
+
+  Make a rate-checker function, with the given `id` prefix, scale and limit.
+
+  Arguments:
+
+  - `id_prefix`: String prefix to the `id`
+  - `scale`: Integer indicating size of bucket in milliseconds
+  - `limit`: Integer maximum count of actions within the bucket
+
+  Returns a function which accepts an `id` suffix, which will be combined with the `id_prefix`.
+  Calling this returned function is equivalent to:
+  `Hammer.check_rate("\#{id_prefix}\#{id}", scale, limit)`
+
+  Example:
+
+      chat_rate_limiter = make_rate_checker("send_chat_message:", 60_000, 20)
+      user_id = 203517
+      case chat_rate_limiter.(user_id) do
+        {:allow, _count} ->
+          # allow chat message
+        {:deny, _limit} ->
+          # deny
+      end
   """
 
   defmacro __using__(opts) do
@@ -115,6 +146,17 @@ defmodule Hammer do
       @spec delete_buckets(id::String.t) :: {:ok, count::integer } | {:error, reason::String.t}
       def delete_buckets(id) do
         apply(@hammer_backend, :delete_buckets, [id])
+      end
+
+      @doc false
+      @spec make_rate_checker(id_prefix::String.t, scale::integer, limit::integer)
+            :: ((id::String.t) -> {:allow, count::integer}
+             | {:deny,  limit::integer}
+             | {:error, reason::String.t})
+      def make_rate_checker(id_prefix, scale, limit) do
+        fn (id) ->
+          check_rate("#{id_prefix}#{id}", scale, limit)
+        end
       end
 
     end

@@ -25,16 +25,6 @@ defmodule Hammer.Backend.ETS do
   end
 
   @doc """
-  Setup function, called once when the Hammer server is initialised
-  """
-  @spec setup(config::map)
-        :: :ok
-          | {:error, reason::String.t}
-  def setup(config) do
-    GenServer.call(__MODULE__, {:setup, config})
-  end
-
-  @doc """
   Record a hit in the bucket identified by `key`
   """
   @spec count_hit(key::{bucket::integer, id::String.t}, now::integer)
@@ -64,22 +54,19 @@ defmodule Hammer.Backend.ETS do
     GenServer.call(__MODULE__, {:delete_buckets, id})
   end
 
-  @doc """
-  Delete 'old' buckets which were last updated before `expire_now`.
-  """
-  @spec prune_expired_buckets(now::integer, expire_before::integer)
-        :: :ok
-         | {:error, reason::String.t}
-  def prune_expired_buckets(now, expire_before) do
-    GenServer.call(__MODULE__, {:prune_expired_buckets, now, expire_before})
-  end
-
-
   ## GenServer Callbacks
 
   def init(args) do
     ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
-    state = %{ets_table_name: ets_table_name}
+    cleanup_interval_ms = Keyword.get(args, :cleanup_rate_ms, Hammer.default_cleanup_interval_ms())
+    expiry_ms = Keyword.get(args, :expiry_ms, Hammer.default_expiry_ms())
+    :ets.new(ets_table_name, [:named_table, :ordered_set, :private])
+    :timer.send_interval(cleanup_interval_ms, :prune)
+    state = %{
+      ets_table_name: ets_table_name,
+      cleanup_interval_ms: cleanup_interval_ms,
+      expiry_ms: expiry_ms
+    }
     {:ok, state}
   end
 
@@ -118,17 +105,20 @@ defmodule Hammer.Backend.ETS do
 
   def handle_call({:delete_buckets, id}, _from, state) do
     %{ets_table_name: tn} = state
-    # fun do {{bucket_number, bid},_,_,_} when bid == ^id -> true end
+    # Compiled from:
+    #   fun do {{bucket_number, bid},_,_,_} when bid == ^id -> true end
     count_deleted = :ets.select_delete(
       tn, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}]
     )
     {:reply, {:ok, count_deleted}, state}
   end
 
-  def handle_call({:prune_expired_buckets, _now, expire_before}, _from, state) do
-    %{ets_table_name: tn} = state
+  def handle_info(:prune, state) do
+    %{expiry_ms: expiry_ms, ets_table_name: tn} = state
+    now = Hammer.Utils.timestamp()
+    expire_before = now - expiry_ms
     :ets.select_delete(tn, [{{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}])
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
 end

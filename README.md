@@ -22,12 +22,18 @@ be found at [https://hexdocs.pm/hammer](https://hexdocs.pm/hammer).
 
 ## Usage
 
-Example:
+To use Hammer, you need to do two things:
+
+- Start a backend process
+- `use` the `Hammer` module
+
+The example below combines both in a `MyApp.RateLimiter` module:
 
 ```elixir
 
 defmodule MyApp.RateLimiter do
   use Supervisor
+  use Hammer, backend: Hammer.Backend.ETS
 
   def start_link() do
     Supervisor.start_link(__MODULE__, :ok)
@@ -35,19 +41,30 @@ defmodule MyApp.RateLimiter do
 
   def init(:ok) do
     children = [
-      worker(Hammer.Backend.ETS, []),
-      worker(Hammer, [[backend: Hammer.Backend.ETS]])
+      worker(Hammer.Backend.ETS, [[expiry_ms: 1000 * 60 * 60
+                                   cleanup_interval_ms: 1000 * 60 * 10]]),
     ]
     supervise(children, strategy: :one_for_one, name: MyApp.RateLimiter)
   end
 end
+```
 
+The `Hammer` module provides the following functions (via `use`):
+
+- `check_rate(id, scale, limit)`
+- `inspect_bucket(id, scale, limit)`
+- `delete_buckets(id)`
+
+The rate-limiter is then used in the app by calling the `check_rate` function:
+
+
+```
 defmodule MyApp.VideoUpload do
 
-  ...
+  alias MyApp.RateLimiter
 
   def upload(video_data, user_id) do
-    case Hammer.check_rate("upload_video:#{user_id}", 60_000, 5) do
+    case RateLimiter.check_rate("upload_video:#{user_id}", 60_000, 5) do
       {:allow, _count} ->
         # upload the video, somehow
       {:deny, _limit} ->
@@ -59,40 +76,32 @@ end
 
 ```
 
+
 See the [Hammer Testbed](https://github.com/ExHammer/hammer-testbed) app for an example of
 using Hammer in a Phoenix application.
 
 
-
 ## Available Backends
 
+- [Hammer.Backend.ETS] (provided with Hammer)
+- [Hammer.Backend.Redis](https://github.com/ExHammer/hammer-backend-redis)
 
 
 ## Writing a Backend
 
 
-The backend api is as follows:
+See `Hammer.Backend.ETS` for a realistic example of a Hammer Backend module.
+
+The expected backend api is as follows:
 
 
-### setup(config)
+### start_link(args)
 
-This function is called whenever the Hammer process is initialized.
-Use this as a hook to do any necessary setup.
-
-Config is a map, containing relevant config vars that were used to start Hammer.
-
-Config:
-- `expiry_ms`: expiry_ms time in milliseconds
-
-The `expiry_ms` item is useful if the backing data store supports automatic expiry, in which
-case the `prune_expired_buckets` function can be a no-op.
-
-Returns: The atom `:ok` or tuple of `{:error, reason}`
-
+todo
 
 ### count_hit(key, timestamp)
 
-- `key`: The key of the current bucket
+- `key`: The key of the current bucket, in the form of a tuple `{bucket::integer, id::String}`.
 - `timestamp`: The current timestamp (integer)
 
 Returns: Either a Tuple of `{:ok, count}` where count is the current count of the bucket,
@@ -114,10 +123,3 @@ or `{:error, reason}`
 - `id`: rate-limit id to delete
 
 Returns: Either `{:ok, count}`, or `{:error, reason}`
-
-
-### prune_expired_buckets(timestamp)
-
-- `timestamp`: current timestamp (integer)
-
-Returns: Either `:ok`, or `{:error, reason}`

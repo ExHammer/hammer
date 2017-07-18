@@ -143,7 +143,9 @@ defmodule Hammer do
       end
 
       @doc false
-      @spec delete_buckets(id::String.t) :: {:ok, count::integer } | {:error, reason::String.t}
+      @spec delete_buckets(id::String.t)
+            :: {:ok, count::integer }
+             | {:error, reason::String.t}
       def delete_buckets(id) do
         apply(@hammer_backend, :delete_buckets, [id])
       end
@@ -151,8 +153,8 @@ defmodule Hammer do
       @doc false
       @spec make_rate_checker(id_prefix::String.t, scale::integer, limit::integer)
             :: ((id::String.t) -> {:allow, count::integer}
-             | {:deny,  limit::integer}
-             | {:error, reason::String.t})
+                                | {:deny,  limit::integer}
+                                | {:error, reason::String.t})
       def make_rate_checker(id_prefix, scale, limit) do
         fn (id) ->
           check_rate("#{id_prefix}#{id}", scale, limit)

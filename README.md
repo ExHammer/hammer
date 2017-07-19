@@ -58,7 +58,8 @@ The `Hammer` module provides the following functions (via `use`):
 The rate-limiter is then used in the app by calling the `check_rate` function:
 
 
-```
+```elixir
+
 defmodule MyApp.VideoUpload do
 
   alias MyApp.RateLimiter
@@ -83,7 +84,7 @@ using Hammer in a Phoenix application.
 
 ## Available Backends
 
-- [Hammer.Backend.ETS] (provided with Hammer)
+- Hammer.Backend.ETS (provided with Hammer)
 - [Hammer.Backend.Redis](https://github.com/ExHammer/hammer-backend-redis)
 
 

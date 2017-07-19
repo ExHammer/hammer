@@ -1,4 +1,138 @@
 # Tutorial
 
 
-todo
+## Installation
+
+Add Hammer as a dependency in `mix.exs`:
+
+```elixir
+def deps do
+  [{:hammer, "~> 0.1.0"}]
+end
+```
+
+## Usage
+
+
+To use Hammer, you need to do two things:
+
+- Start a backend process
+- `use` the `Hammer` module
+
+In this example, we will use the `ETS` backend, which stores data in an in-memory ETS table.
+
+
+### Starting a Backend Process
+
+Hammer backends are typically implemented as OTP GenServer modules. You just need to start the
+process as part of your application's OTP supervision tree.
+
+By convention, the Backend `start_link` functions accept a Keyword list of configuration options,
+at the minimum `expiry_ms` and `cleanup_interval_ms`. Each backends may require additional,
+more specific configuration, such as details of how to connect to a database.
+
+The `expiry_ms` option determines how long an individual "bucket" should be kept in storage
+before being cleaned up (deleted), while `cleanup_interval_ms` determines the time between
+cleanup runs.
+
+Starting the `Hammer.Backend.ETS` process as a worker might look like this:
+
+```elixir
+  worker(Hammer.Backend.ETS, [[expiry_ms: 1000 * 60 * 60,
+                               cleanup_rate_ms: 1000 * 60 * 10]]),
+```
+
+
+### `use`ing The Hammer Module
+
+To bring the functions of the `Hammer` module into scope, use the `use` macro (ahem),
+and specify the `:backend` module which should be used.
+
+
+```elixir
+use Hammer, backend: Hammer.Backend.ETS
+```
+
+This will create four functions, all configured to use the specified backend:
+
+- `check_rate(id::string, scale::integer, limit::integer)`
+- `inspect_bucket(id::string, scale::integer, limit::integer)`
+- `delete_buckets(id::string)`
+- `make_rate_checker(id_prefix, scale, limit)`
+
+The most interesting is `check_rate`, which checks if the rate-limit for the given `id`
+has been exceeded in the specified time-`scale`.
+
+Ideally, the `id` should be a combination of some action-specific, descriptive prefix
+with some data which uniquely identifies the user or client performing the action.
+
+Example:
+
+```elixir
+# limit file uploads to 10 per minute per user
+user_id = get_user_id_somehow()
+case check_rate("upload_file:#{user_id}", 60_000, 10) do
+  {:allow, _count} ->
+    # upload the file, somehow
+  {:deny, _limit} ->
+    # deny the request
+end
+```
+
+
+### A Realistic Example
+
+The example below shows a `MyApp.RateLimiter` module, which acts as both a Supervisor to the
+`Hammer.Backend.ETS` process, and contains the rate-limiting API via `use Hammer...`
+
+```elixir
+defmodule MyApp.RateLimiter do
+  use Supervisor
+  use Hammer, backend: Hammer.Backend.ETS
+
+  def start_link() do
+    Supervisor.start_link(__MODULE__, :ok)
+  end
+
+  def init(:ok) do
+    children = [
+      worker(Hammer.Backend.ETS, [[expiry_ms: 1000 * 60 * 60
+                                   cleanup_interval_ms: 1000 * 60 * 10]]),
+    ]
+    supervise(children, strategy: :one_for_one, name: MyApp.RateLimiter)
+  end
+end
+```
+
+Of course, the `MyApp.RateLimiter` supervisor should be added to the application's
+supervision tree like so:
+
+```elixir
+# probably somewhere in application.ex
+
+  children = [
+    ...
+    supervisor(HammerTestbed.RateLimiter, [])
+    ...
+  ]
+```
+
+
+The rate-limiter is then used in the app by calling the `check_rate` function:
+
+```elixir
+defmodule MyApp.VideoUpload do
+
+  alias MyApp.RateLimiter
+
+  def upload(video_data, user_id) do
+    case RateLimiter.check_rate("upload_video:#{user_id}", 60_000, 5) do
+      {:allow, _count} ->
+        # upload the video, somehow
+      {:deny, _limit} ->
+        # deny the request
+    end
+  end
+
+end
+```

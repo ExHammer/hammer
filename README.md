@@ -15,11 +15,6 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/hammer](https://hexdocs.pm/hammer).
-
-
 ## Usage
 
 To use Hammer, you need to do two things:
@@ -77,6 +72,7 @@ end
 
 ```
 
+See the [Tutorial](doc_src/Tutorial.md) for more.
 
 See the [Hammer Testbed](https://github.com/ExHammer/hammer-testbed) app for an example of
 using Hammer in a Phoenix application.

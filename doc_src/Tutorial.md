@@ -22,7 +22,7 @@ To use Hammer, you need to do two things:
 In this example, we will use the `ETS` backend, which stores data in an in-memory ETS table.
 
 
-### Starting a Backend Process
+## Starting a Backend Process
 
 Hammer backends are typically implemented as OTP GenServer modules. You just need to start the
 process as part of your application's OTP supervision tree.
@@ -43,7 +43,7 @@ Starting the `Hammer.Backend.ETS` process as a worker might look like this:
 ```
 
 
-### `use`ing The Hammer Module
+## `use`-ing The Hammer Module
 
 To bring the functions of the `Hammer` module into scope, use the `use` macro (ahem),
 and specify the `:backend` module which should be used.
@@ -80,7 +80,7 @@ end
 ```
 
 
-### A Realistic Example
+## A Realistic Example
 
 The example below shows a `MyApp.RateLimiter` module, which acts as both a Supervisor to the
 `Hammer.Backend.ETS` process, and contains the rate-limiting API via `use Hammer...`

@@ -22,7 +22,7 @@ rarer, but not unheard-of, to limit the action globally without taking the
 identity of the user or client into account.
 
 In the Hammer API, the maximum number of actions is the `limit`, and the
-timespan (in milliseconds) is the `scale`. The combination of the name of the
+timespan (in milliseconds) is the `scale_ms`. The combination of the name of the
 action with some unique identifier is the `id`.
 
 Hammer uses a [Token Bucket](https://en.wikipedia.org/wiki/Token_bucket)
@@ -78,10 +78,10 @@ use Hammer, backend: Hammer.Backend.ETS
 
 This will create four functions, all configured to use the specified backend:
 
-- `check_rate(id::string, scale::integer, limit::integer)`
-- `inspect_bucket(id::string, scale::integer, limit::integer)`
+- `check_rate(id::string, scale_ms::integer, limit::integer)`
+- `inspect_bucket(id::string, scale_ms::integer, limit::integer)`
 - `delete_buckets(id::string)`
-- `make_rate_checker(id_prefix, scale, limit)`
+- `make_rate_checker(id_prefix, scale_ms, limit)`
 
 The most interesting is `check_rate`, which checks if the rate-limit for the given `id`
 has been exceeded in the specified time-`scale`.

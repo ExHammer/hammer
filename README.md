@@ -46,8 +46,8 @@ end
 
 The `Hammer` module provides the following functions (via `use`):
 
-- `check_rate(id, scale, limit)`
-- `inspect_bucket(id, scale, limit)`
+- `check_rate(id, scale_ms, limit)`
+- `inspect_bucket(id, scale_ms, limit)`
 - `delete_buckets(id)`
 
 The rate-limiter is then used in the app by calling the `check_rate` function:

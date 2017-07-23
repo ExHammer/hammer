@@ -20,7 +20,7 @@ defmodule Hammer do
   Args:
   - `id`: String name of the bucket. Usually the bucket name is comprised of some fixed prefix,
   with some dynamic string appended, such as an IP address or user id.
-  - `scale`: Integer indicating size of bucket in milliseconds
+  - `scale_ms`: Integer indicating size of bucket in milliseconds
   - `limit`: Integer maximum count of actions within the bucket
 
   Returns either `{:allow,  count}`, `{:deny,   limit}` or `{:error,  reason}`
@@ -45,7 +45,7 @@ defmodule Hammer do
 
   - `id`: String name of the bucket. Usually the bucket name is comprised of some fixed prefix,
   with some dynamic string appended, such as an IP address or user id.
-  - `scale`: Integer indicating size of bucket in milliseconds
+  - `scale_ms`: Integer indicating size of bucket in milliseconds
   - `limit`: Integer maximum count of actions within the bucket
 
   Example:
@@ -74,17 +74,17 @@ defmodule Hammer do
 
   # make_rate_checker
 
-  Make a rate-checker function, with the given `id` prefix, scale and limit.
+  Make a rate-checker function, with the given `id` prefix, scale_ms and limit.
 
   Arguments:
 
   - `id_prefix`: String prefix to the `id`
-  - `scale`: Integer indicating size of bucket in milliseconds
+  - `scale_ms`: Integer indicating size of bucket in milliseconds
   - `limit`: Integer maximum count of actions within the bucket
 
   Returns a function which accepts an `id` suffix, which will be combined with the `id_prefix`.
   Calling this returned function is equivalent to:
-  `Hammer.check_rate("\#{id_prefix}\#{id}", scale, limit)`
+  `Hammer.check_rate("\#{id_prefix}\#{id}", scale_ms, limit)`
 
   Example:
 
@@ -104,12 +104,12 @@ defmodule Hammer do
       @hammer_backend Keyword.get(opts, :backend, Hammer.Backend.ETS)
 
       @doc false
-      @spec check_rate(id::String.t, scale::integer, limit::integer)
+      @spec check_rate(id::String.t, scale_ms::integer, limit::integer)
             :: {:allow, count::integer}
              | {:deny,  limit::integer}
              | {:error, reason::String.t}
-      def check_rate(id, scale, limit) do
-        {stamp, key} = Hammer.Utils.stamp_key(id, scale)
+      def check_rate(id, scale_ms, limit) do
+        {stamp, key} = Hammer.Utils.stamp_key(id, scale_ms)
         case apply(@hammer_backend, :count_hit, [key, stamp]) do
           {:ok, count} ->
             if (count > limit) do
@@ -124,15 +124,15 @@ defmodule Hammer do
 
       # TODO: check the error reporting here
       @doc false
-      @spec inspect_bucket(id::String.t, scale::integer, limit::integer)
+      @spec inspect_bucket(id::String.t, scale_ms::integer, limit::integer)
             :: {count::integer,
                 count_remaining::integer,
                 ms_to_next_bucket::integer,
                 created_at :: integer | nil,
                 updated_at :: integer | nil}
-      def inspect_bucket(id, scale, limit) do
-        {stamp, key} = Hammer.Utils.stamp_key(id, scale)
-        ms_to_next_bucket = (elem(key, 0) * scale) + scale - stamp
+      def inspect_bucket(id, scale_ms, limit) do
+        {stamp, key} = Hammer.Utils.stamp_key(id, scale_ms)
+        ms_to_next_bucket = (elem(key, 0) * scale_ms) + scale_ms - stamp
         case apply(@hammer_backend, :get_bucket, [key]) do
           nil ->
             {0, limit, ms_to_next_bucket, nil, nil}
@@ -151,13 +151,13 @@ defmodule Hammer do
       end
 
       @doc false
-      @spec make_rate_checker(id_prefix::String.t, scale::integer, limit::integer)
+      @spec make_rate_checker(id_prefix::String.t, scale_ms::integer, limit::integer)
             :: ((id::String.t) -> {:allow, count::integer}
                                 | {:deny,  limit::integer}
                                 | {:error, reason::String.t})
-      def make_rate_checker(id_prefix, scale, limit) do
+      def make_rate_checker(id_prefix, scale_ms, limit) do
         fn (id) ->
-          check_rate("#{id_prefix}#{id}", scale, limit)
+          check_rate("#{id_prefix}#{id}", scale_ms, limit)
         end
       end
 

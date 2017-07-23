@@ -11,29 +11,52 @@ def deps do
 end
 ```
 
-## Usage
 
+## Core Concepts
+
+When we want to rate-limit some action, we want to ensure that the number of
+actions permitted is limited within a specified time-period. For example, a
+maximum of five times within on minute. Usually the limit is enforced per-user,
+per-client, or per some other unique-ish value, such as IP address. It's much
+rarer, but not unheard-of, to limit the action globally without taking the
+identity of the user or client into account.
+
+In the Hammer API, the maximum number of actions is the `limit`, and the
+timespan (in milliseconds) is the `scale`. The combination of the name of the
+action with some unique identifier is the `id`.
+
+Hammer uses a [Token Bucket](https://en.wikipedia.org/wiki/Token_bucket)
+algorithm to count the number of actions occurring in a "bucket". If the count
+within the bucket is lower than the limit, then the action is allowed, otherwise
+it is denied.
+
+
+## Usage
 
 To use Hammer, you need to do two things:
 
 - Start a backend process
 - `use` the `Hammer` module
 
-In this example, we will use the `ETS` backend, which stores data in an in-memory ETS table.
+In this example, we will use the `ETS` backend, which stores data in an
+in-memory ETS table.
 
 
 ## Starting a Backend Process
 
-Hammer backends are typically implemented as OTP GenServer modules. You just need to start the
-process as part of your application's OTP supervision tree.
+Hammer backends are typically implemented as OTP GenServer modules. You just
+need to start the process as part of your application's OTP supervision tree.
 
-By convention, the Backend `start_link` functions accept a Keyword list of configuration options,
-at the minimum `expiry_ms` and `cleanup_interval_ms`. Each backends may require additional,
-more specific configuration, such as details of how to connect to a database.
+By convention, the Backend `start_link` functions accept a Keyword list of
+configuration options, at the minimum `expiry_ms` and `cleanup_interval_ms`.
+Each backends may require additional, more specific configuration, such as
+details of how to connect to a database.
 
-The `expiry_ms` option determines how long an individual "bucket" should be kept in storage
-before being cleaned up (deleted), while `cleanup_interval_ms` determines the time between
-cleanup runs.
+Because the number of buckets stored will continue to grow while your
+application is running it is essental to clean up old buckets regularly. The
+`expiry_ms` option determines how long an individual "bucket" should be kept in
+storage before being cleaned up (deleted), while `cleanup_interval_ms`
+determines the time between cleanup runs.
 
 Starting the `Hammer.Backend.ETS` process as a worker might look like this:
 

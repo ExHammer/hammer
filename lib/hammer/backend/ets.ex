@@ -82,12 +82,6 @@ defmodule Hammer.Backend.ETS do
     {:stop, :normal, :ok, state}
   end
 
-  def handle_call({:setup, _config}, _from, state) do
-    %{ets_table_name: tn} = state
-    :ets.new(tn, [:named_table, :ordered_set, :private])
-    {:reply, :ok, state}
-  end
-
   def handle_call({:count_hit, key, now}, _from, state) do
     %{ets_table_name: tn} = state
     case :ets.member(tn, key) do

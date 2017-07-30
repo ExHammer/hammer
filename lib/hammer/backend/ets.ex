@@ -37,7 +37,7 @@ defmodule Hammer.Backend.ETS do
   """
   @spec count_hit(key::{bucket::integer, id::String.t}, now::integer)
         :: {:ok, count::integer}
-         | {:error, reason::String.t}
+         | {:error, reason::any}
   def count_hit(key, now) do
     GenServer.call(__MODULE__, {:count_hit, key, now})
   end
@@ -46,8 +46,12 @@ defmodule Hammer.Backend.ETS do
   Retrieve information about the bucket identified by `key`
   """
   @spec get_bucket(key::{bucket::integer, id::String.t})
-        :: nil
-         | {key::{bucket::integer, id::String.t}, count::integer, created::integer, updated::integer}
+        :: {:ok, {key::{bucket::integer, id::String.t},
+                  count::integer,
+                  created::integer,
+                  updated::integer}}
+         | {:ok, nil}
+         | {:error, reason::any}
   def get_bucket(key) do
     GenServer.call(__MODULE__, {:get_bucket, key})
   end
@@ -57,7 +61,7 @@ defmodule Hammer.Backend.ETS do
   """
   @spec delete_buckets(id::String.t)
         :: {:ok, count_deleted::integer}
-         | {:error, reason::String.t}
+         | {:error, reason::any}
   def delete_buckets(id) do
     GenServer.call(__MODULE__, {:delete_buckets, id})
   end
@@ -84,35 +88,50 @@ defmodule Hammer.Backend.ETS do
 
   def handle_call({:count_hit, key, now}, _from, state) do
     %{ets_table_name: tn} = state
-    case :ets.member(tn, key) do
-      false ->
-        true = :ets.insert(tn, {key, 1, now, now})
-        {:reply, {:ok, 1}, state}
-      true ->
-        [count, _, _] = :ets.update_counter(tn, key, [{2,1},{3,0},{4,1,0, now}])
-        {:reply, {:ok, count}, state}
+    try do
+      case :ets.member(tn, key) do
+        false ->
+          true = :ets.insert(tn, {key, 1, now, now})
+          {:reply, {:ok, 1}, state}
+        true ->
+          [count, _, _] = :ets.update_counter(tn, key, [{2,1},{3,0},{4,1,0, now}])
+          {:reply, {:ok, count}, state}
+      end
+    rescue
+      e ->
+        {:reply, {:error, e}, state}
     end
   end
 
   def handle_call({:get_bucket, key}, _from, state) do
     %{ets_table_name: tn} = state
-    result = case :ets.lookup(tn, key) do
-      [] ->
-        nil
-      [bucket] ->
-        bucket
+    try do
+      result = case :ets.lookup(tn, key) do
+        [] ->
+          {:ok, nil}
+        [bucket] ->
+          {:ok, bucket}
+      end
+      {:reply, result, state}
+    rescue
+      e ->
+        {:reply, {:error, e}, state}
     end
-    {:reply, result, state}
   end
 
   def handle_call({:delete_buckets, id}, _from, state) do
     %{ets_table_name: tn} = state
     # Compiled from:
     #   fun do {{bucket_number, bid},_,_,_} when bid == ^id -> true end
-    count_deleted = :ets.select_delete(
-      tn, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}]
-    )
-    {:reply, {:ok, count_deleted}, state}
+    try do
+      count_deleted = :ets.select_delete(
+        tn, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}]
+      )
+      {:reply, {:ok, count_deleted}, state}
+    rescue
+      e ->
+        {:reply, {:error, e}, state}
+    end
   end
 
   def handle_info(:prune, state) do

@@ -49,14 +49,14 @@ defmodule HammerTest do
   end
 
   test "returns expected tuples on inspect_bucket" do
-    assert {0, 2, _, nil, nil} = inspect_bucket("my-bucket1", 1000, 2)
+    assert {:ok, {0, 2, _, nil, nil}} = inspect_bucket("my-bucket1", 1000, 2)
     assert {:allow, 1} = check_rate("my-bucket1", 1000, 2)
-    assert {1, 1, _, _, _} = inspect_bucket("my-bucket1", 1000, 2)
+    assert {:ok, {1, 1, _, _, _}} = inspect_bucket("my-bucket1", 1000, 2)
     assert {:allow, 2} = check_rate("my-bucket1", 1000, 2)
     assert {:allow, 1} = check_rate("my-bucket2", 1000, 2)
-    assert {2, 0, _, _, _} = inspect_bucket("my-bucket1", 1000, 2)
+    assert {:ok, {2, 0, _, _, _}} = inspect_bucket("my-bucket1", 1000, 2)
     assert {:deny, 2} = check_rate("my-bucket1", 1000, 2)
-    assert {3, 0, ms_to_next_bucket, _, _} = inspect_bucket("my-bucket1", 1000, 2)
+    assert {:ok, {3, 0, ms_to_next_bucket, _, _}} = inspect_bucket("my-bucket1", 1000, 2)
     assert ms_to_next_bucket < 1000
   end
 

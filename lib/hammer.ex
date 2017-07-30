@@ -48,10 +48,14 @@ defmodule Hammer do
   - `scale_ms`: Integer indicating size of bucket in milliseconds
   - `limit`: Integer maximum count of actions within the bucket
 
+  Returns either
+  `{:ok, {count, count_remaining, ms_to_next_bucket, created_at, updated_at}`,
+  or `{:error, reason}`.
+
   Example:
 
       inspect_bucket("file_upload:2042", 60_000, 5)
-      {1, 2499, 29381612, 1450281014468, 1450281014468}
+      {:ok, {1, 2499, 29381612, 1450281014468, 1450281014468}}
 
 
   # delete_buckets
@@ -107,7 +111,7 @@ defmodule Hammer do
       @spec check_rate(id::String.t, scale_ms::integer, limit::integer)
             :: {:allow, count::integer}
              | {:deny,  limit::integer}
-             | {:error, reason::String.t}
+             | {:error, reason::any}
       def check_rate(id, scale_ms, limit) do
         {stamp, key} = Hammer.Utils.stamp_key(id, scale_ms)
         case apply(@hammer_backend, :count_hit, [key, stamp]) do
@@ -122,30 +126,32 @@ defmodule Hammer do
         end
       end
 
-      # TODO: check the error reporting here
       @doc false
       @spec inspect_bucket(id::String.t, scale_ms::integer, limit::integer)
-            :: {count::integer,
-                count_remaining::integer,
-                ms_to_next_bucket::integer,
-                created_at :: integer | nil,
-                updated_at :: integer | nil}
+            :: {:ok, {count::integer,
+                      count_remaining::integer,
+                      ms_to_next_bucket::integer,
+                      created_at :: integer | nil,
+                      updated_at :: integer | nil}}
+             | {:error, reason::any}
       def inspect_bucket(id, scale_ms, limit) do
         {stamp, key} = Hammer.Utils.stamp_key(id, scale_ms)
         ms_to_next_bucket = (elem(key, 0) * scale_ms) + scale_ms - stamp
         case apply(@hammer_backend, :get_bucket, [key]) do
-          nil ->
-            {0, limit, ms_to_next_bucket, nil, nil}
-          {_, count, created_at, updated_at} ->
+          {:ok, nil} ->
+            {:ok, {0, limit, ms_to_next_bucket, nil, nil}}
+          {:ok, {_, count, created_at, updated_at}} ->
             count_remaining = if limit > count, do: limit - count, else: 0
-            {count, count_remaining, ms_to_next_bucket, created_at, updated_at}
+            {:ok, {count, count_remaining, ms_to_next_bucket, created_at, updated_at}}
+          {:error, reason} ->
+            {:error, reason}
         end
       end
 
       @doc false
       @spec delete_buckets(id::String.t)
             :: {:ok, count::integer }
-             | {:error, reason::String.t}
+             | {:error, reason::any}
       def delete_buckets(id) do
         apply(@hammer_backend, :delete_buckets, [id])
       end
@@ -154,7 +160,7 @@ defmodule Hammer do
       @spec make_rate_checker(id_prefix::String.t, scale_ms::integer, limit::integer)
             :: ((id::String.t) -> {:allow, count::integer}
                                 | {:deny,  limit::integer}
-                                | {:error, reason::String.t})
+                                | {:error, reason::any})
       def make_rate_checker(id_prefix, scale_ms, limit) do
         fn (id) ->
           check_rate("#{id_prefix}#{id}", scale_ms, limit)

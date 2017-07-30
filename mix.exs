@@ -3,6 +3,13 @@ defmodule Hammer.Mixfile do
 
   def project do
     [app: :hammer,
+     description: "A rate-limiter with plugable backends."
+     package: [name: :hammer,
+               maintainers: ["Shane Kilkelly (shane@kilkelly.me)"],
+               licenses: ["MIT"],
+               links: %{"GitHub" => "https://github.com/ExHammer/hammer"}]
+     source_url: "https://github.com/ExHammer/hammer",
+     homepage_url: "https://github.com/ExHammer/hammer",
      version: "0.1.0",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,

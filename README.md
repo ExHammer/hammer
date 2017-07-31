@@ -2,7 +2,6 @@
 
 A rate-limiter for Elixir, with pluggable storage backends.
 
-*Currently worse-than-alpha quality, do not use in production*.
 
 ## Installation
 

@@ -162,8 +162,8 @@ end
 
 ## Further Reading
 
-See the docs for the [Hammer](/Hammer.html) module for full documentation on all the
+See the docs for the [Hammer](/hammer/Hammer.html) module for full documentation on all the
 functions created by `use Hammer`.
 
-See the [Creating Backends](creatingbackends.html) for information on creating new backends
+See the [Creating Backends](/hammer/creatingbackends.html) for information on creating new backends
 for Hammer.

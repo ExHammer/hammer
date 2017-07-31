@@ -12,6 +12,6 @@ Hammer is a rate-limiter for the [Elixir](https://elixir-lang.org/) language. It
     end
 ```
 
-To get started with Hammer, read the [Tutorial](/tutorial.html).
+To get started with Hammer, read the [Tutorial](/hammer/tutorial.html).
 
-A primary goal of the Hammer project is to make it easy to implement new storage backends. See the [documentation on creating backends](/creatingbackends.html) for more details.
+A primary goal of the Hammer project is to make it easy to implement new storage backends. See the [documentation on creating backends](/hammer/creatingbackends.html) for more details.

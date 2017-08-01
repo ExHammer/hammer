@@ -13,7 +13,7 @@ defmodule Hammer do
 
   The following functions are created:
 
-  # check_rate
+  # check_rate(id::String.t, scale_ms::integer, limit::integer)
 
   Check if the action you wish to perform is within the bounds of the rate-limit.
 
@@ -35,7 +35,7 @@ defmodule Hammer do
       end
 
 
-  # inspect_bucket
+  # inspect_bucket(id::String.t, scale_ms::integer, limit::integer)
 
   Inspect bucket to get count, count_remaining, ms_to_next_bucket, created_at, updated_at.
   This function is free of side-effects and should be called with the same arguments you
@@ -58,7 +58,7 @@ defmodule Hammer do
       {:ok, {1, 2499, 29381612, 1450281014468, 1450281014468}}
 
 
-  # delete_buckets
+  # delete_buckets(id::String.t)
 
   Delete all buckets belonging to the provided id, including the current one.
   Effectively resets the rate-limit for the id.

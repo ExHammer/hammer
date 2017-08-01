@@ -14,6 +14,11 @@ def deps do
 end
 ```
 
+
+## Documentation
+
+On hexdocs: [https://hexdocs.pm/hammer/frontpage.html](https://hexdocs.pm/hammer/frontpage.html)
+
 ## Usage
 
 To use Hammer, you need to do two things:

@@ -5,7 +5,7 @@ A rate-limiter for Elixir, with pluggable storage backends.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
+Hammer is [available in Hex](https://hex.pm/packages/hammer), the package can be installed
 by adding `hammer` to your list of dependencies in `mix.exs`:
 
 ```elixir

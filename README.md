@@ -19,6 +19,8 @@ end
 
 On hexdocs: [https://hexdocs.pm/hammer/frontpage.html](https://hexdocs.pm/hammer/frontpage.html)
 
+The [Tutorial](https://hexdocs.pm/hammer/tutorial.html) is an especially good place to start.
+
 ## Usage
 
 To use Hammer, you need to do two things:

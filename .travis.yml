@@ -3,4 +3,4 @@ elixir:
   - 1.5.0
 otp_release:
   - 19.0
-script: make test
+script: make test && mix coveralls.travis"

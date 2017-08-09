@@ -3,6 +3,9 @@
 A rate-limiter for Elixir, with pluggable storage backends.
 
 
+[![Build Status](https://travis-ci.org/ExHammer/hammer.svg?branch=master)](https://travis-ci.org/ExHammer/hammer)
+
+
 ## Installation
 
 Hammer is [available in Hex](https://hex.pm/packages/hammer), the package can be installed

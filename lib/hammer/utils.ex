@@ -1,4 +1,5 @@
 defmodule Hammer.Utils do
+  @moduledoc false
 
   # Returns Erlang Time as milliseconds since 00:00 GMT, January 1, 1970
   def timestamp do
@@ -7,8 +8,9 @@ defmodule Hammer.Utils do
 
   # Returns tuple of {timestamp, key}, where key is {bucket_number, id}
   def stamp_key(id, scale_ms) do
-    stamp         = Hammer.Utils.timestamp()
-    bucket_number = trunc(stamp/scale_ms)      # with scale_ms = 1 bucket changes every millisecond
+    stamp         = timestamp()
+    # with scale_ms = 1 bucket changes every millisecond
+    bucket_number = trunc(stamp / scale_ms)
     key           = {bucket_number, id}
     {stamp, key}
   end

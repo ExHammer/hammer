@@ -1,6 +1,12 @@
 language: elixir
+
 elixir:
   - 1.5.0
+
 otp_release:
-  - 19.0
-script: make test && mix coveralls.travis
+  - 20.0
+
+script:
+  - make test
+  - mix credo --strict
+  - mix coveralls.travis

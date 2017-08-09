@@ -5,6 +5,7 @@ A rate-limiter for Elixir, with pluggable storage backends.
 
 [![Build Status](https://travis-ci.org/ExHammer/hammer.svg?branch=master)](https://travis-ci.org/ExHammer/hammer)
 
+[![Coverage Status](https://coveralls.io/repos/github/ExHammer/hammer/badge.svg?branch=master)](https://coveralls.io/github/ExHammer/hammer?branch=master)
 
 ## Installation
 

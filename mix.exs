@@ -18,7 +18,12 @@ defmodule Hammer.Mixfile do
      docs: [main: "frontpage",
             extras: ["doc_src/Frontpage.md",
                      "doc_src/Tutorial.md",
-                     "doc_src/CreatingBackends.md"]]]
+                     "doc_src/CreatingBackends.md"]],
+     test_coverage: [tool: ExCoveralls],
+     preferred_cli_env: ["coveralls": :test,
+                         "coveralls.detail": :test,
+                         "coveralls.post": :test,
+                         "coveralls.html": :test]]
   end
 
   # Configuration for the OTP application
@@ -40,6 +45,7 @@ defmodule Hammer.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [{:ex_doc, "~> 0.16", only: :dev},
-     {:dialyxir, "~> 0.5", only: [:dev], runtime: false}]
+     {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
+     {:excoveralls, "~> 0.5", only: :test}]
   end
 end

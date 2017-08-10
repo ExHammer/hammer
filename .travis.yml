@@ -12,5 +12,5 @@ env:
 
 script:
   - make test
-  - mix credo --strict
-  - mix coveralls.travis
+  - make credo
+  - make coveralls.travis

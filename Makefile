@@ -1,5 +1,8 @@
 # Hammer makefile
 
+default: test docs credo coveralls
+
+
 test:
 	mix test --no-start
 

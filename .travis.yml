@@ -6,6 +6,10 @@ elixir:
 otp_release:
   - 20.0
 
+env:
+  - MIX_ENV=test
+
+
 script:
   - make test
   - mix credo --strict

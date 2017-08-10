@@ -95,7 +95,6 @@ defmodule Hammer do
       end
   """
 
-  use GenServer
   alias Hammer.Utils
 
   @default_cleanup_interval_ms 60 * 1000 * 10

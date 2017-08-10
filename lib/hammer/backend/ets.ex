@@ -1,5 +1,4 @@
 defmodule Hammer.Backend.ETS do
-  use GenServer
   @moduledoc """
   An ETS backend for Hammer
 
@@ -10,9 +9,12 @@ defmodule Hammer.Backend.ETS do
 
   """
 
+  use GenServer
+  alias Hammer.Utils
+
   ## Public API
 
-  def start() do
+  def start do
     start([])
   end
 
@@ -20,7 +22,7 @@ defmodule Hammer.Backend.ETS do
     GenServer.start(__MODULE__, args, name: __MODULE__)
   end
 
-  def start_link() do
+  def start_link do
     start_link([])
   end
 
@@ -28,7 +30,7 @@ defmodule Hammer.Backend.ETS do
     GenServer.start_link(__MODULE__, args, name: __MODULE__)
   end
 
-  def stop() do
+  def stop do
     GenServer.call(__MODULE__, :stop)
   end
 
@@ -70,7 +72,9 @@ defmodule Hammer.Backend.ETS do
 
   def init(args) do
     ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
-    cleanup_interval_ms = Keyword.get(args, :cleanup_rate_ms, Hammer.default_cleanup_interval_ms())
+    cleanup_interval_ms = Keyword.get(
+      args, :cleanup_rate_ms, Hammer.default_cleanup_interval_ms()
+    )
     expiry_ms = Keyword.get(args, :expiry_ms, Hammer.default_expiry_ms())
     :ets.new(ets_table_name, [:named_table, :ordered_set, :private])
     :timer.send_interval(cleanup_interval_ms, :prune)
@@ -89,13 +93,14 @@ defmodule Hammer.Backend.ETS do
   def handle_call({:count_hit, key, now}, _from, state) do
     %{ets_table_name: tn} = state
     try do
-      case :ets.member(tn, key) do
-        false ->
-          true = :ets.insert(tn, {key, 1, now, now})
-          {:reply, {:ok, 1}, state}
-        true ->
-          [count, _, _] = :ets.update_counter(tn, key, [{2,1},{3,0},{4,1,0, now}])
-          {:reply, {:ok, count}, state}
+      if :ets.member(tn, key) do
+        [count, _, _] = :ets.update_counter(
+          tn, key, [{2, 1}, {3, 0}, {4, 1, 0, now}]
+        )
+        {:reply, {:ok, count}, state}
+      else
+        true = :ets.insert(tn, {key, 1, now, now})
+        {:reply, {:ok, 1}, state}
       end
     rescue
       e ->
@@ -136,9 +141,11 @@ defmodule Hammer.Backend.ETS do
 
   def handle_info(:prune, state) do
     %{expiry_ms: expiry_ms, ets_table_name: tn} = state
-    now = Hammer.Utils.timestamp()
+    now = Utils.timestamp()
     expire_before = now - expiry_ms
-    :ets.select_delete(tn, [{{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}])
+    :ets.select_delete(tn, [
+      {{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}
+    ])
     {:noreply, state}
   end
 

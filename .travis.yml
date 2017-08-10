@@ -13,4 +13,4 @@ env:
 script:
   - make test
   - make credo
-  - make coveralls.travis
+  - make coveralls-travis

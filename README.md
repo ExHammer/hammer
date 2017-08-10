@@ -92,3 +92,8 @@ using Hammer in a Phoenix application.
 
 - Hammer.Backend.ETS (provided with Hammer)
 - [Hammer.Backend.Redis](https://github.com/ExHammer/hammer-backend-redis)
+
+
+## Acknowledgements
+
+Hammer was inspired by the [ExRated](https://github.com/grempe/ex_rated) library, by [grempe](https://github.com/grempe).

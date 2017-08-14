@@ -3,6 +3,10 @@
 
 See `Hammer.Backend.ETS` for a realistic example of a Hammer Backend module.
 
+
+Backends for Hammer are expected to implement the [Hammer.Backend](/hammer/Hammer.Backend.html) behaviour.
+
+
 The expected backend api is as follows:
 
 

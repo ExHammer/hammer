@@ -82,7 +82,7 @@ end
 
 ```
 
-See the [Tutorial](doc_src/Tutorial.md) for more.
+See the [Tutorial](https://hexdocs.pm/hammer/tutorial.html) for more.
 
 See the [Hammer Testbed](https://github.com/ExHammer/hammer-testbed) app for an example of
 using Hammer in a Phoenix application.

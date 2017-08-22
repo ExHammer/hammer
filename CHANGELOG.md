@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Unreleased]
+## 1.0.0
 
 ### Added
 - Formalise backend API in `Hammer.Backend` behaviour

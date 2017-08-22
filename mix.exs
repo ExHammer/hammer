@@ -10,7 +10,7 @@ defmodule Hammer.Mixfile do
                links: %{"GitHub" => "https://github.com/ExHammer/hammer"}],
      source_url: "https://github.com/ExHammer/hammer",
      homepage_url: "https://github.com/ExHammer/hammer",
-     version: "0.2.1",
+     version: "1.0.0",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,

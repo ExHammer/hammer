@@ -6,8 +6,9 @@ defmodule Hammer.Backend.ETS do
   A bucket is identified by a `key`, which is a tuple `{bucket_number, id}`.
   The essential schema of a bucket is: `{key, count, created_at, updated_at}`, although backends
   are free to store and retrieve this data in whichever way they wish.
-
   """
+
+  @behaviour Hammer.Backend
 
   use GenServer
   alias Hammer.Utils

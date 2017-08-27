@@ -6,6 +6,23 @@ defmodule Hammer.Backend.ETS do
   A bucket is identified by a `key`, which is a tuple `{bucket_number, id}`.
   The essential schema of a bucket is: `{key, count, created_at, updated_at}`, although backends
   are free to store and retrieve this data in whichever way they wish.
+
+  Use `start` or `start_link` to start the server:
+
+      {:ok, pid} = Hammer.Backend.ETS.start_link(args)
+
+  `args` is a keyword list:
+  - `ets_table_name`: (atom) table name to use, defaults to `:hammer_ets_buckets`
+  - `expiry_ms`: (integer) time in ms before a bucket is auto-deleted,
+    should be larger than the expected largest size/duration of a bucket
+  - `cleanup_interval_ms`: (integer) time between cleanup runs,
+
+  Example:
+
+      Hammer.Backend.ETS.start_link(
+        expiry_ms: 1000 * 60 * 60,
+        cleanup_interval_ms: 1000 * 60 * 10
+      )
   """
 
   @behaviour Hammer.Backend
@@ -27,6 +44,8 @@ defmodule Hammer.Backend.ETS do
     start_link([])
   end
 
+  @doc """
+  """
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: __MODULE__)
   end

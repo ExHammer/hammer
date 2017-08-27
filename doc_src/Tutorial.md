@@ -160,6 +160,53 @@ defmodule MyApp.VideoUpload do
 end
 ```
 
+## Switching to Redis
+
+There may come a time when ETS just doesn't cut it, for example if we end up load-balancing across many nodes and want to keep our rate-limiter state in one central store. [Redis](https://redis.io) is ideal for this use-case, and fortunately Hammer supports a [Redis backend](https://github.com/ExHammer/hammer-backend-redis).
+
+To change our application to use the Redis backend, we need to do the following:
+
+- Install and set up Redis (excercise for the reader)
+- Add the `hammer_backend_redis` dependency
+- Start the `Hammer.Backend.Redis` process
+- Change the backend it the `use Hammer` macro
+
+Here we go...
+
+Add `hammer_backend_redis` to your mix dependencies:
+
+```elixir
+defp deps do
+  [
+    ...
+    {:hammer, "~> 1.0.0"},
+    {:hammer_backend_redis, "~> 1.0.0"},
+    ...
+  ]
+end
+```
+
+Change the `MyApp.RateLimiter` module to use the `Hammer.Backend.Redis` instead of `Hammer.Backend.ETS`:
+
+```elixir
+defmodule MyApp.RateLimiter do
+  use Supervisor
+  use Hammer, backend: Hammer.Backend.Redis
+
+  def start_link() do
+    Supervisor.start_link(__MODULE__, :ok)
+  end
+
+  def init(:ok) do
+    children = [
+      worker(Hammer.Backend.Redis, [[expiry_ms: 1000 * 60 * 60
+                                     redix_config: [host: "localhost"]]]),
+    ]
+    supervise(children, strategy: :one_for_one, name: MyApp.RateLimiter)
+  end
+end
+```
+
 ## Further Reading
 
 See the docs for the [Hammer](/hammer/Hammer.html) module for full documentation on all the

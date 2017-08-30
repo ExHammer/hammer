@@ -157,7 +157,6 @@ defmodule Hammer do
     end
   end
 
-
   def default_cleanup_interval_ms do
     @default_cleanup_interval_ms
   end

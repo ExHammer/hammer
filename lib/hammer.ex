@@ -8,9 +8,6 @@ defmodule Hammer do
 
   alias Hammer.Utils
 
-  @default_cleanup_interval_ms 60 * 1000 * 10
-  @default_expiry_ms 60 * 1000 * 60 * 2
-
   @spec check_rate(id::String.t, scale_ms::integer, limit::integer)
         :: {:allow, count::integer}
          | {:deny,  limit::integer}
@@ -155,14 +152,6 @@ defmodule Hammer do
     fn (id) ->
       check_rate("#{id_prefix}#{id}", scale_ms, limit)
     end
-  end
-
-  def default_cleanup_interval_ms do
-    @default_cleanup_interval_ms
-  end
-
-  def default_expiry_ms do
-    @default_expiry_ms
   end
 
 end

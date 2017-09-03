@@ -62,7 +62,7 @@ Starting the `Hammer.Backend.ETS` process as a worker might look like this:
 
 ```elixir
   worker(Hammer.Backend.ETS, [[expiry_ms: 1000 * 60 * 60,
-                               cleanup_rate_ms: 1000 * 60 * 10]]),
+                               cleanup_interval_ms: 1000 * 60 * 10]]),
 ```
 
 

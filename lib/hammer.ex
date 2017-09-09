@@ -35,7 +35,7 @@ defmodule Hammer do
   """
   def check_rate(id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
-    backend = Application.get_env(:hammer, :backend)
+    {backend, _config} = Application.get_env(:hammer, :backend)
     case apply(backend, :count_hit, [key, stamp]) do
       {:ok, count} ->
         if count > limit do
@@ -79,7 +79,7 @@ defmodule Hammer do
   """
   def inspect_bucket(id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
-    backend = Application.get_env(:hammer, :backend)
+    {backend, _config} = Application.get_env(:hammer, :backend)
     ms_to_next_bucket = (elem(key, 0) * scale_ms) + scale_ms - stamp
     case apply(backend, :get_bucket, [key]) do
       {:ok, nil} ->
@@ -114,7 +114,7 @@ defmodule Hammer do
 
   """
   def delete_buckets(id) do
-    backend = Application.get_env(:hammer, :backend)
+    {backend, _config} = Application.get_env(:hammer, :backend)
     apply(backend, :delete_buckets, [id])
   end
 

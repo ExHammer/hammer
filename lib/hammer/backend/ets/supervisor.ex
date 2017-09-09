@@ -3,6 +3,8 @@ defmodule Hammer.Backend.ETS.Supervisor do
   Supervisor for the ETS backend.
   """
 
+  @config_options [:ets_table_name, :expiry_ms, :cleanup_interval_ms]
+
   use Supervisor
 
   def start_link(config, opts) do
@@ -10,13 +12,11 @@ defmodule Hammer.Backend.ETS.Supervisor do
   end
 
   def init(config) do
-    backend_config = [
-      ets_table_name: Keyword.get(config, :ets_table_name),
-      expiry_ms: Keyword.get(config, :expiry_ms),
-      cleanup_interval_ms: Keyword.get(config, :cleanup_interval_ms)
-    ]
+    backend_config = config |> Enum.filter(
+      fn({k, _v}) -> Enum.member?(@config_options, k) end
+    )
     children = [
-      worker(Hammer.Backend.ETS, [backend_config])
+      worker(Hammer.Backend.ETS, [backend_config], name: Hammer.Backend.ETS)
     ]
     supervise(children, strategy: :one_for_one, name: __MODULE__)
   end

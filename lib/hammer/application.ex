@@ -6,9 +6,17 @@ defmodule Hammer.Application do
   use Application
 
   def start(_type, _args) do
-    Hammer.Backend.ETS.Supervisor.start_link(
-      Application.get_env(:hammer, :ets),
-      name: :hammer_backend_ets_sup
+    {backend_module, backend_config} = Application.get_env(
+      :hammer,
+      :backend,
+      {Hammer.Backend.ETS, []}
+    )
+    supervisor_module = String.to_atom(
+      Atom.to_string(backend_module) <> ".Supervisor"
+    )
+    supervisor_module.start_link(
+      backend_config,
+      name: :hammer_backend_sup
     )
   end
 

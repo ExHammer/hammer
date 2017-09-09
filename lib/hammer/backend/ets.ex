@@ -94,7 +94,7 @@ defmodule Hammer.Backend.ETS do
     ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
     cleanup_interval_ms = Keyword.get(args, :cleanup_interval_ms)
     expiry_ms = Keyword.get(args, :expiry_ms)
-    :ets.new(ets_table_name, [:named_table, :ordered_set, :private])
+    :ets.new(ets_table_name, [:named_table, :ordered_set])
     :timer.send_interval(cleanup_interval_ms, :prune)
     state = %{
       ets_table_name: ets_table_name,

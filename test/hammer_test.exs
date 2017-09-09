@@ -114,9 +114,18 @@ defmodule ETSTest do
 
 end
 
+defmodule HammerBackendETSSupervisorTest do
+  use ExUnit.Case
+
+  test "supervisor starts correctly" do
+    assert {:ok, _pid} = Hammer.Backend.ETS.Supervisor.start_link()
+  end
+
+
+end
+
 defmodule UtilsTest do
   use ExUnit.Case
-  doctest Hammer.Utils
 
   test "timestamp" do
     assert is_integer(Hammer.Utils.timestamp())
@@ -130,6 +139,10 @@ defmodule UtilsTest do
     {bucket_number, b_id} = key
     assert is_integer(bucket_number)
     assert b_id == id
+  end
+
+  test "get_backend_module" do
+    assert Hammer.Utils.get_backend_module() == Hammer.Backend.ETS
   end
 
 end

@@ -35,8 +35,7 @@ defmodule Hammer do
   """
   def check_rate(id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
-    {backend, _config} = Application.get_env(:hammer, :backend)
-    case apply(backend, :count_hit, [key, stamp]) do
+    case call_backend(:count_hit, [key, stamp]) do
       {:ok, count} ->
         if count > limit do
           {:deny, limit}
@@ -79,9 +78,8 @@ defmodule Hammer do
   """
   def inspect_bucket(id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
-    {backend, _config} = Application.get_env(:hammer, :backend)
     ms_to_next_bucket = (elem(key, 0) * scale_ms) + scale_ms - stamp
-    case apply(backend, :get_bucket, [key]) do
+    case call_backend(:get_bucket, [key]) do
       {:ok, nil} ->
         {:ok, {0, limit, ms_to_next_bucket, nil, nil}}
       {:ok, {_, count, created_at, updated_at}} ->
@@ -114,8 +112,7 @@ defmodule Hammer do
 
   """
   def delete_buckets(id) do
-    {backend, _config} = Application.get_env(:hammer, :backend)
-    apply(backend, :delete_buckets, [id])
+    call_backend(:delete_buckets, [id])
   end
 
   @spec make_rate_checker(id_prefix::String.t,
@@ -152,6 +149,11 @@ defmodule Hammer do
     fn (id) ->
       check_rate("#{id_prefix}#{id}", scale_ms, limit)
     end
+  end
+
+  defp call_backend(function, args) do
+    backend = Utils.get_backend_module()
+    apply(backend, function, args)
   end
 
 end

@@ -4,6 +4,7 @@ defmodule Hammer.Application do
   """
 
   use Application
+  require Logger
 
   def start(_type, _args) do
     {backend_module, backend_config} = Application.get_env(
@@ -11,6 +12,7 @@ defmodule Hammer.Application do
       :backend,
       {Hammer.Backend.ETS, []}
     )
+    Logger.info("Starting Hammer with backend '#{backend_module}'")
     supervisor_module = String.to_atom(
       Atom.to_string(backend_module) <> ".Supervisor"
     )

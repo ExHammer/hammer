@@ -14,4 +14,13 @@ defmodule Hammer.Utils do
     key           = {bucket_number, id}
     {stamp, key}
   end
+
+  def get_backend_module do
+    case Application.get_env(:hammer, :backend) do
+      {backend_module, _config} ->
+        backend_module
+      _ ->
+        Hammer.Backend.ETS
+    end
+  end
 end

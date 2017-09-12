@@ -115,6 +115,7 @@ defmodule ETSTest do
 end
 
 defmodule HammerBackendETSSupervisorTest do
+
   use ExUnit.Case
 
   test "supervisor starts correctly" do

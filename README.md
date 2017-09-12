@@ -25,52 +25,16 @@ On hexdocs: [https://hexdocs.pm/hammer/frontpage.html](https://hexdocs.pm/hammer
 
 The [Tutorial](https://hexdocs.pm/hammer/tutorial.html) is an especially good place to start.
 
+
 ## Usage
 
-To use Hammer, you need to do two things:
-
-- Start a backend process
-- `use` the `Hammer` module
-
-The example below combines both in a `MyApp.RateLimiter` module:
+Example:
 
 ```elixir
-
-defmodule MyApp.RateLimiter do
-  use Supervisor
-  use Hammer, backend: Hammer.Backend.ETS
-
-  def start_link() do
-    Supervisor.start_link(__MODULE__, :ok)
-  end
-
-  def init(:ok) do
-    children = [
-      worker(Hammer.Backend.ETS, [[expiry_ms: 1000 * 60 * 60
-                                   cleanup_interval_ms: 1000 * 60 * 10]]),
-    ]
-    supervise(children, strategy: :one_for_one, name: MyApp.RateLimiter)
-  end
-end
-```
-
-The `Hammer` module provides the following functions (via `use`):
-
-- `check_rate(id, scale_ms, limit)`
-- `inspect_bucket(id, scale_ms, limit)`
-- `delete_buckets(id)`
-
-The rate-limiter is then used in the app by calling the `check_rate` function:
-
-
-```elixir
-
 defmodule MyApp.VideoUpload do
 
-  alias MyApp.RateLimiter
-
   def upload(video_data, user_id) do
-    case RateLimiter.check_rate("upload_video:#{user_id}", 60_000, 5) do
+    case Hammer.check_rate("upload_video:#{user_id}", 60_000, 5) do
       {:allow, _count} ->
         # upload the video, somehow
       {:deny, _limit} ->
@@ -79,8 +43,22 @@ defmodule MyApp.VideoUpload do
   end
 
 end
-
 ```
+
+The `Hammer` module provides the following functions:
+
+- `check_rate(id, scale_ms, limit)`
+- `inspect_bucket(id, scale_ms, limit)`
+- `delete_buckets(id)`
+
+Backends are configured via `Mix.Config`:
+
+```elixir
+config :hammer,
+  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 4,
+                                 cleanup_interval_ms: 60_000 * 10]}
+```
+
 
 See the [Tutorial](https://hexdocs.pm/hammer/tutorial.html) for more.
 

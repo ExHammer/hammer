@@ -3,12 +3,15 @@
 
 See `Hammer.Backend.ETS` for a realistic example of a Hammer Backend module.
 
+Backends for Hammer are expected to implement
+the [Hammer.Backend](/hammer/Hammer.Backend.html) behaviour, under the name
+`Hammer.Backend.Foo`, and to provide a Supervisor module under the name
+`Hammer.Backend.Foo.Supervisor`.
 
-Backends for Hammer are expected to implement the [Hammer.Backend](/hammer/Hammer.Backend.html) behaviour.
 
+## The `Hammer.Backend` behaviour
 
 The expected backend api is as follows:
-
 
 ### start_link(args)
 
@@ -56,3 +59,24 @@ or `{:error, reason}`
 This should delete all existing buckets associated with the supplied `id`.
 
 Returns: Either `{:ok, count}`, or `{:error, reason}`
+
+
+## The Supervisor
+
+The supervisor module should implement a `start_link/2` with the following signature:
+
+```elixir
+start_link(config::Keyword.t, options::Keyword.t)
+```
+
+It should start and supervise whichever processes are required to make the
+backend work.
+
+The `config` parameter is the backend-specific keyword-list which is the second
+element in the `:backend` configuration tuple. The `options` parameter is a
+keyword-list of Supervisor options, and should generally be passed straight
+through as the third argument to `Supervisor.start_link`.
+
+Again, the source-code for the `Hammer.Backend.ETS` and
+`Hammer.Backend.ETS.Supervisor` modules are great examples of how to implement a
+backend.

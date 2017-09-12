@@ -1,0 +1,5 @@
+{
+  "skip_files": [
+    "lib/hammer/application.ex"
+  ]
+}

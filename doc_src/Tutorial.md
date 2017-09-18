@@ -114,8 +114,9 @@ central store. [Redis](https://redis.io) is ideal for this use-case, and
 fortunately Hammer supports
 a [Redis backend](https://github.com/ExHammer/hammer-backend-redis).
 
-To change our application to use the Redis backend, we only need to change the
-`:backend` tuple that is used to configure the `:hammer` application:
+To change our application to use the Redis backend, we only need to install the
+redis backend package, and change the `:backend` tuple that is used to configure
+the `:hammer` application:
 
 ```elixir
 # config :hammer,

@@ -1,6 +1,16 @@
 # Changelog
 
 
+## 2.0.0
+
+### Changed
+
+- New, simpler API
+  - No longer need to start backend processes manually
+  - Call `Hammer.check_rate` directly, rather than `use`ing a macro
+- Hammer is now an OTP application, configured via `Mix.Config`
+
+
 ## 1.0.0
 
 ### Added

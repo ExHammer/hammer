@@ -16,11 +16,11 @@ credo:
 
 
 coveralls:
-	mix coveralls
+	mix coveralls --no-start
 
 
 coveralls-travis:
-	mix coveralls.travis
+	mix coveralls.travis --no-start
 
 
 .PHONY: test docs credo coveralls coveralls-travis

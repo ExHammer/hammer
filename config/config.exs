@@ -2,6 +2,12 @@
 # and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
+config :hammer,
+  backend: {Hammer.Backend.ETS,
+            [ets_table_name: :hammer_backend_ets_buckets,
+             expiry_ms: 60_000 * 60 * 2,
+             cleanup_interval_ms: 60_000 * 2]}
+
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
 # file won't be loaded nor affect the parent project. For this reason,

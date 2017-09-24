@@ -10,7 +10,7 @@ defmodule Hammer.Mixfile do
                links: %{"GitHub" => "https://github.com/ExHammer/hammer"}],
      source_url: "https://github.com/ExHammer/hammer",
      homepage_url: "https://github.com/ExHammer/hammer",
-     version: "1.0.0",
+     version: "2.0.0-rc1",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -31,7 +31,7 @@ defmodule Hammer.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    []
+    [mod: {Hammer.Application, []}]
   end
 
   # Dependencies can be Hex packages:

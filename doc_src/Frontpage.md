@@ -4,7 +4,7 @@ Hammer is a rate-limiter for the [Elixir](https://elixir-lang.org/) language. It
 
 
 ```elixir
-    case check_rate("file_upload:#{user_id}", 60_000, 10) do
+    case Hammer.check_rate("file_upload:#{user_id}", 60_000, 10) do
       {:allow, _count} ->
         # ...
       {:deny, _limit} ->

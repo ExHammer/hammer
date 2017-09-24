@@ -35,182 +35,106 @@ it is denied.
 
 To use Hammer, you need to do two things:
 
-- Start a backend process
-- `use` the `Hammer` module
+- Configure the `:hammer` application
+- Use the functions in the `Hammer` module
 
 In this example, we will use the `ETS` backend, which stores data in an
 in-memory ETS table.
 
 
-## Starting a Backend Process
+## Configuring Hammer
 
-Hammer backends are typically implemented as OTP GenServer modules. You just
-need to start the process as part of your application's OTP supervision tree.
-
-By convention, the Backend `start_link` functions accept a Keyword list of
-configuration options, at the minimum `expiry_ms` and `cleanup_interval_ms`.
-Each backends may require additional, more specific configuration, such as
-details of how to connect to a database.
-
-Because the number of buckets stored will continue to grow while your
-application is running it is essental to clean up old buckets regularly. The
-`expiry_ms` option determines how long an individual "bucket" should be kept in
-storage before being cleaned up (deleted), while `cleanup_interval_ms`
-determines the time between cleanup runs.
-
-Starting the `Hammer.Backend.ETS` process as a worker might look like this:
+The Hammer OTP application is configured the usual way, using `Mix.Config`.
+Your project probably has a `config/config.exs` file, in which you should
+configure Hammer, like so:
 
 ```elixir
-  worker(Hammer.Backend.ETS, [[expiry_ms: 1000 * 60 * 60,
-                               cleanup_rate_ms: 1000 * 60 * 10]]),
+config :hammer,
+  backend: {Hammer.Backend.ETS,
+            [expiry_ms: 60_000 * 60 * 4,
+             cleanup_interval_ms: 60_000 * 10]}
 ```
 
+The only configuration key (so far) is `:backend`, and its value is a tuple/pair
+of the backend module name, and a backend-specific keyword list of configuration
+options.
 
-## `use`-ing The Hammer Module
+Because expiry of stale buckets is so essential to the smooth operation of a
+rate-limiter, all backends will accept an `:expiry_ms` option, and many will
+also accept `:cleanup_interval_ms`, depending on how expiry is implemented
+internally.
 
-To bring the functions of the `Hammer` module into scope, use the `use` macro (ahem),
-and specify the `:backend` module which should be used.
+(For example, Redis supports native data expiry, and so doesn't require
+`:cleanup_interval_ms`.)
+
+The `:expiry_ms` value should be configured to be longer than the life of the
+longest bucket you will be using, as otherwise the bucket could be deleted while
+it is still counting up hits for its time period.
+
+Luckily, even if you don't configure `:hammer` at all, the application will
+default to the ETS backend anyway, with some sensible defaults.
 
 
-```elixir
-use Hammer, backend: Hammer.Backend.ETS
-```
+## The Hammer Module
 
-This will create four functions, all configured to use the specified backend:
+Once the Hammer application is running (and it should just start automatically
+when your system starts), All you need to do is use the various functions in the
+`Hammer` module:
 
 - `check_rate(id::string, scale_ms::integer, limit::integer)`
 - `inspect_bucket(id::string, scale_ms::integer, limit::integer)`
 - `delete_buckets(id::string)`
 - `make_rate_checker(id_prefix, scale_ms, limit)`
 
-The most interesting is `check_rate`, which checks if the rate-limit for the given `id`
-has been exceeded in the specified time-`scale`.
+The most interesting is `check_rate`, which checks if the rate-limit for the
+given `id` has been exceeded in the specified time-`scale`.
 
-Ideally, the `id` should be a combination of some action-specific, descriptive prefix
-with some data which uniquely identifies the user or client performing the action.
+Ideally, the `id` should be a combination of some action-specific, descriptive
+prefix with some data which uniquely identifies the user or client performing
+the action.
 
 Example:
 
 ```elixir
 # limit file uploads to 10 per minute per user
 user_id = get_user_id_somehow()
-case check_rate("upload_file:#{user_id}", 60_000, 10) do
+case Hammer.check_rate("upload_file:#{user_id}", 60_000, 10) do
   {:allow, _count} ->
-    # upload the file, somehow
+    # upload the file
   {:deny, _limit} ->
     # deny the request
 end
 ```
 
-
-## A Realistic Example
-
-The example below shows a `MyApp.RateLimiter` module, which acts as both a Supervisor to the
-`Hammer.Backend.ETS` process, and contains the rate-limiting API via `use Hammer...`
-
-```elixir
-defmodule MyApp.RateLimiter do
-  use Supervisor
-  use Hammer, backend: Hammer.Backend.ETS
-
-  def start_link() do
-    Supervisor.start_link(__MODULE__, :ok)
-  end
-
-  def init(:ok) do
-    children = [
-      worker(Hammer.Backend.ETS, [[expiry_ms: 1000 * 60 * 60
-                                   cleanup_interval_ms: 1000 * 60 * 10]]),
-    ]
-    supervise(children, strategy: :one_for_one, name: MyApp.RateLimiter)
-  end
-end
-```
-
-Of course, the `MyApp.RateLimiter` supervisor should be added to the application's
-supervision tree like so:
-
-```elixir
-# probably somewhere in application.ex
-
-  children = [
-    ...
-    supervisor(HammerTestbed.RateLimiter, [])
-    ...
-  ]
-```
-
-
-The rate-limiter is then used in the app by calling the `check_rate` function:
-
-```elixir
-defmodule MyApp.VideoUpload do
-
-  alias MyApp.RateLimiter
-
-  def upload(video_data, user_id) do
-    case RateLimiter.check_rate("upload_video:#{user_id}", 60_000, 5) do
-      {:allow, _count} ->
-        # upload the video, somehow
-      {:deny, _limit} ->
-        # deny the request
-    end
-  end
-
-end
-```
-
 ## Switching to Redis
 
-There may come a time when ETS just doesn't cut it, for example if we end up load-balancing across many nodes and want to keep our rate-limiter state in one central store. [Redis](https://redis.io) is ideal for this use-case, and fortunately Hammer supports a [Redis backend](https://github.com/ExHammer/hammer-backend-redis).
+There may come a time when ETS just doesn't cut it, for example if we end up
+load-balancing across many nodes and want to keep our rate-limiter state in one
+central store. [Redis](https://redis.io) is ideal for this use-case, and
+fortunately Hammer supports
+a [Redis backend](https://github.com/ExHammer/hammer-backend-redis).
 
-To change our application to use the Redis backend, we need to do the following:
-
-- Install and set up Redis (excercise for the reader)
-- Add the `hammer_backend_redis` dependency
-- Start the `Hammer.Backend.Redis` process
-- Change the backend it the `use Hammer` macro
-
-Here we go...
-
-Add `hammer_backend_redis` to your mix dependencies:
+To change our application to use the Redis backend, we only need to install the
+redis backend package, and change the `:backend` tuple that is used to configure
+the `:hammer` application:
 
 ```elixir
-defp deps do
-  [
-    ...
-    {:hammer, "~> 1.0.0"},
-    {:hammer_backend_redis, "~> 1.0.0"},
-    ...
-  ]
-end
+# config :hammer,
+#   backend: {Hammer.Backend.ETS, []}
+
+config :hammer,
+  backend: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
+                                   redix_config: [host: "localhost",
+                                                  port: 6379]]}
 ```
 
-Change the `MyApp.RateLimiter` module to use the `Hammer.Backend.Redis` instead of `Hammer.Backend.ETS`:
+Then it should all Just Work™.
 
-```elixir
-defmodule MyApp.RateLimiter do
-  use Supervisor
-  use Hammer, backend: Hammer.Backend.Redis
-
-  def start_link() do
-    Supervisor.start_link(__MODULE__, :ok)
-  end
-
-  def init(:ok) do
-    children = [
-      worker(Hammer.Backend.Redis, [[expiry_ms: 1000 * 60 * 60
-                                     redix_config: [host: "localhost"]]]),
-    ]
-    supervise(children, strategy: :one_for_one, name: MyApp.RateLimiter)
-  end
-end
-```
 
 ## Further Reading
 
-See the docs for the [Hammer](/hammer/Hammer.html) module for full documentation on all the
-functions created by `use Hammer`.
+See the docs for the [Hammer](/hammer/Hammer.html) module for full documentation
+on all the functions created by `use Hammer`.
 
-See the [Creating Backends](/hammer/creatingbackends.html) for information on creating new backends
-for Hammer.
+See the [Creating Backends](/hammer/creatingbackends.html) for information on
+creating new backends for Hammer.

@@ -94,8 +94,8 @@ defmodule Hammer do
     inspect_bucket(:single, id, scale_ms, limit)
   end
 
-  @spec inspect_bucket(backend::atom, 
-                       id::String.t, 
+  @spec inspect_bucket(backend::atom,
+                       id::String.t,
                        scale_ms::integer,
                        limit::integer)
         :: {:ok, {count::integer,

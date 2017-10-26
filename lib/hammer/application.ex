@@ -16,7 +16,9 @@ defmodule Hammer.Application do
   end
 
   defp start_backend(_key, which) when is_list(which) do
-    Enum.reduce(which, :ok, fn({key, config}, _acc) -> start_backend(key, config) end)
+    Enum.reduce(which, :ok, fn({key, config}, _acc) -> 
+      start_backend(key, config) 
+    end)
   end
   defp start_backend(key, {backend_module, backend_config}) do
     Logger.info("Starting Hammer with backend '#{backend_module}'")

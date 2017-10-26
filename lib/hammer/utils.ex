@@ -16,7 +16,7 @@ defmodule Hammer.Utils do
   end
 
   def get_backend_module(which) do
-    case Application.get_env(:hammer, :backends)[which] do
+    case Application.get_env(:hammer, :backend)[which] do
       {backend_module, _config} ->
         backend_module
       _ ->

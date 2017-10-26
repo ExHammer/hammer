@@ -37,7 +37,10 @@ defmodule Hammer do
     check_rate(:single, id, scale_ms, limit)
   end
 
-  @spec check_rate(backend::atom, id::String.t, scale_ms::integer, limit::integer)
+  @spec check_rate(backend::atom,
+                   id::String.t,
+                   scale_ms::integer,
+                   limit::integer)
         :: {:allow, count::integer}
          | {:deny,  limit::integer}
          | {:error, reason::any}
@@ -91,7 +94,10 @@ defmodule Hammer do
     inspect_bucket(:single, id, scale_ms, limit)
   end
 
-  @spec inspect_bucket(backend::atom, id::String.t, scale_ms::integer, limit::integer)
+  @spec inspect_bucket(backend::atom, 
+                       id::String.t, 
+                       scale_ms::integer,
+                       limit::integer)
         :: {:ok, {count::integer,
                   count_remaining::integer,
                   ms_to_next_bucket::integer,

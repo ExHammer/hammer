@@ -205,10 +205,6 @@ defmodule Hammer do
      end
    end
 
-  defp call_backend(:single, function, args) do
-    backend = Utils.get_backend_module()
-    apply(backend, function, args)
-  end
   defp call_backend(which, function, args) do
     backend = Utils.get_backend_module(which)
     apply(backend, function, args)

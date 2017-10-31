@@ -15,6 +15,38 @@ defmodule Hammer.Application do
 
   end
 
+  # example multipe backends:
+  #
+  # config :hammer,
+  #  backend: [
+  #    ets: {
+  #      Hammer.Backend.ETS,
+  #      [
+  #        ets_table_name: :hammer_backend_ets_buckets,
+  #        expiry_ms: 60_000 * 60 * 2,
+  #        cleanup_interval_ms: 60_000 * 2
+  #      ]
+  #    },
+  #    redis: {
+  #      Hammer.Backend.Redis,
+  #      [
+  #        expiry_ms: 60_000 * 60 * 2,
+  #        redix_config: [host: "localhost", port: 6379]
+  #      ]
+  #    },
+  #    sentinel: {
+  #      Hammer.Backend.Redis,
+  #      [
+  #        expiry_ms: 60_000 * 60 * 2,
+  #        redix_config:
+  #          [
+  #            sentinels: [ [host: "localhost", port: 26379 ], [host: "localhost", port: 26379 ] ],
+  #            group: "mymaster"
+  #          ]
+  #      ]
+  #    }
+  #  ]
+  #
   defp start_backend(_key, which) when is_list(which) do
     Enum.reduce(which, :ok, fn({key, config}, _acc) ->
       start_backend(key, config)

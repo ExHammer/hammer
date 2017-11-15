@@ -143,7 +143,7 @@ defmodule UtilsTest do
   end
 
   test "get_backend_module" do
-    assert Hammer.Utils.get_backend_module() == Hammer.Backend.ETS
+    assert Hammer.Utils.get_backend_module(:single) == Hammer.Backend.ETS
   end
 
 end

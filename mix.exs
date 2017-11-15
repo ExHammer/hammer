@@ -31,7 +31,8 @@ defmodule Hammer.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [mod: {Hammer.Application, []}]
+    [mod: {Hammer.Application, []},
+     extra_applications: [:logger, :runtime_tools]]
   end
 
   # Dependencies can be Hex packages:

@@ -20,7 +20,8 @@ defmodule Hammer.Utils do
       {backend_module, _config} ->
         backend_module
       _ ->
-        Hammer.Backend.ETS
+        raise RuntimeError,
+          "trying to get single backend, but multiple backends configured"
     end
   end
   def get_backend_module(which) do

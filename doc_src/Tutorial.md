@@ -131,6 +131,40 @@ config :hammer,
 Then it should all Just Work™.
 
 
+## (Advanced) using multiple backends at the same time
+
+Hammer can be configured to start multiple backends, which can then be referred
+to separately when checking a rate-limit. In this example we configure both and
+ETS backend under the key `:in_memory`, and a Redis backend under the key
+`:redis`...
+
+```elixir
+
+
+config :hammer,
+  backend: [
+    in_memory: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 2]},
+    redis: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
+                                    redix_config: [host: "localhost",
+                                                    port: 6379]]}
+  ]
+```
+
+We can then refer to these backends separately:
+
+```elixir
+Hammer.check_rate(:in_memory, "upload:#{user_id}", 60_000, 5)
+Hammer.check_rate(:redis,     "upload:#{user_id}", 60_000, 5)
+```
+
+When using multiple backends the backend specifier key is mandatory, there is no
+notion of a default backend.
+
+Note: It's currently not possible to use multiple instances of the same backend
+module, so it's not possible to have two separate Redis backends for example.
+We'll probably remove this restriction at some point in the future.
+
+
 ## Further Reading
 
 See the docs for the [Hammer](/hammer/Hammer.html) module for full documentation

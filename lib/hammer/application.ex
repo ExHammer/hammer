@@ -1,6 +1,13 @@
 defmodule Hammer.Application do
   @moduledoc """
   Hammer application, responsible for starting the ETS backend.
+  Configured with the `:hammer` environment key:
+
+  - `:backend`, Either a tuple of `{module, config}`, or a keyword-list
+    of separate, named backends. Examples:
+    `{Hammer.Backend.ETS, []}`, `[ets: {Hammer.Backend.ETS, []}, ...]`
+  - `:suppress_logs`, if set to `true`, stops all log messages from Hammer
+
   """
 
   use Application
@@ -57,7 +64,9 @@ defmodule Hammer.Application do
     end)
   end
   defp start_backend(key, {backend_module, backend_config}) do
-    Logger.info("Starting Hammer with backend '#{backend_module}'")
+    if !Application.get_env(:hammer, :suppress_logs, false) do
+      Logger.info("Starting Hammer with backend '#{backend_module}'")
+    end
     supervisor_module = String.to_atom(
       Atom.to_string(backend_module) <> ".Supervisor"
     )

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0
+
+### Changed
+
+- Add option to use more than one backend
+- Add option to suppress all logging
+
 
 ## 2.0.0
 

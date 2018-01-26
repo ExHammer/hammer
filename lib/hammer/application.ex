@@ -40,21 +40,6 @@ defmodule Hammer.Application do
   #        expiry_ms: 60_000 * 60 * 2,
   #        redix_config: [host: "localhost", port: 6379]
   #      ]
-  #    },
-  #    sentinel: {
-  #      Hammer.Backend.Redis,
-  #      [
-  #        expiry_ms: 60_000 * 60 * 2,
-  #        redix_config:
-  #        [
-  #          sentinels:
-  #          [
-  #            [host: "localhost", port: 26379 ],
-  #            [host: "localhost", port: 26379 ]
-  #          ],
-  #          group: "mymaster"
-  #        ]
-  #      ]
   #    }
   #  ]
   #

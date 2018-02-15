@@ -8,10 +8,10 @@ defmodule Hammer.Utils do
 
   # Returns tuple of {timestamp, key}, where key is {bucket_number, id}
   def stamp_key(id, scale_ms) do
-    stamp         = timestamp()
+    stamp = timestamp()
     # with scale_ms = 1 bucket changes every millisecond
     bucket_number = trunc(stamp / scale_ms)
-    key           = {bucket_number, id}
+    key = {bucket_number, id}
     {stamp, key}
   end
 
@@ -19,18 +19,19 @@ defmodule Hammer.Utils do
     case Application.get_env(:hammer, :backend) do
       {backend_module, _config} ->
         backend_module
+
       _ ->
-        raise RuntimeError,
-          "trying to get single backend, but multiple backends configured"
+        raise RuntimeError, "trying to get single backend, but multiple backends configured"
     end
   end
+
   def get_backend_module(which) do
     case Application.get_env(:hammer, :backend)[which] do
       {backend_module, _config} ->
         backend_module
+
       _ ->
         raise KeyError, "backend #{which} is not configured"
     end
   end
-
 end

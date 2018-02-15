@@ -57,9 +57,9 @@ defmodule Hammer.Backend.ETS do
   @doc """
   Record a hit in the bucket identified by `key`
   """
-  @spec count_hit(key::{bucket::integer, id::String.t}, now::integer)
-        :: {:ok, count::integer}
-         | {:error, reason::any}
+  @spec count_hit(key :: {bucket :: integer, id :: String.t()}, now :: integer) ::
+          {:ok, count :: integer}
+          | {:error, reason :: any}
   def count_hit(key, now) do
     GenServer.call(__MODULE__, {:count_hit, key, now})
   end
@@ -67,13 +67,12 @@ defmodule Hammer.Backend.ETS do
   @doc """
   Retrieve information about the bucket identified by `key`
   """
-  @spec get_bucket(key::{bucket::integer, id::String.t})
-        :: {:ok, {key::{bucket::integer, id::String.t},
-                  count::integer,
-                  created::integer,
-                  updated::integer}}
-         | {:ok, nil}
-         | {:error, reason::any}
+  @spec get_bucket(key :: {bucket :: integer, id :: String.t()}) ::
+          {:ok,
+           {key :: {bucket :: integer, id :: String.t()}, count :: integer, created :: integer,
+            updated :: integer}}
+          | {:ok, nil}
+          | {:error, reason :: any}
   def get_bucket(key) do
     GenServer.call(__MODULE__, {:get_bucket, key})
   end
@@ -81,9 +80,9 @@ defmodule Hammer.Backend.ETS do
   @doc """
   Delete all buckets associated with `id`.
   """
-  @spec delete_buckets(id::String.t)
-        :: {:ok, count_deleted::integer}
-         | {:error, reason::any}
+  @spec delete_buckets(id :: String.t()) ::
+          {:ok, count_deleted :: integer}
+          | {:error, reason :: any}
   def delete_buckets(id) do
     GenServer.call(__MODULE__, {:delete_buckets, id})
   end
@@ -96,11 +95,13 @@ defmodule Hammer.Backend.ETS do
     expiry_ms = Keyword.get(args, :expiry_ms)
     :ets.new(ets_table_name, [:named_table, :ordered_set])
     :timer.send_interval(cleanup_interval_ms, :prune)
+
     state = %{
       ets_table_name: ets_table_name,
       cleanup_interval_ms: cleanup_interval_ms,
       expiry_ms: expiry_ms
     }
+
     {:ok, state}
   end
 
@@ -110,11 +111,10 @@ defmodule Hammer.Backend.ETS do
 
   def handle_call({:count_hit, key, now}, _from, state) do
     %{ets_table_name: tn} = state
+
     try do
       if :ets.member(tn, key) do
-        [count, _, _] = :ets.update_counter(
-          tn, key, [{2, 1}, {3, 0}, {4, 1, 0, now}]
-        )
+        [count, _, _] = :ets.update_counter(tn, key, [{2, 1}, {3, 0}, {4, 1, 0, now}])
         {:reply, {:ok, count}, state}
       else
         true = :ets.insert(tn, {key, 1, now, now})
@@ -128,13 +128,17 @@ defmodule Hammer.Backend.ETS do
 
   def handle_call({:get_bucket, key}, _from, state) do
     %{ets_table_name: tn} = state
+
     try do
-      result = case :ets.lookup(tn, key) do
-        [] ->
-          {:ok, nil}
-        [bucket] ->
-          {:ok, bucket}
-      end
+      result =
+        case :ets.lookup(tn, key) do
+          [] ->
+            {:ok, nil}
+
+          [bucket] ->
+            {:ok, bucket}
+        end
+
       {:reply, result, state}
     rescue
       e ->
@@ -147,9 +151,9 @@ defmodule Hammer.Backend.ETS do
     # Compiled from:
     #   fun do {{bucket_number, bid},_,_,_} when bid == ^id -> true end
     try do
-      count_deleted = :ets.select_delete(
-        tn, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}]
-      )
+      count_deleted =
+        :ets.select_delete(tn, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}])
+
       {:reply, {:ok, count_deleted}, state}
     rescue
       e ->
@@ -161,10 +165,11 @@ defmodule Hammer.Backend.ETS do
     %{expiry_ms: expiry_ms, ets_table_name: tn} = state
     now = Utils.timestamp()
     expire_before = now - expiry_ms
+
     :ets.select_delete(tn, [
       {{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}
     ])
+
     {:noreply, state}
   end
-
 end

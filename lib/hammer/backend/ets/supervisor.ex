@@ -10,20 +10,22 @@ defmodule Hammer.Backend.ETS.Supervisor do
   def start_link do
     start_link([], [])
   end
+
   def start_link(config) do
     start_link(config, [])
   end
+
   def start_link(config, opts) do
     Supervisor.start_link(__MODULE__, config, opts)
   end
 
   def init(config) do
-    backend_config = config |> Enum.filter(
-      fn({k, _v}) -> Enum.member?(@config_options, k) end
-    )
+    backend_config = config |> Enum.filter(fn {k, _v} -> Enum.member?(@config_options, k) end)
+
     children = [
       {Hammer.Backend.ETS, [backend_config]}
     ]
+
     Supervisor.init(children, strategy: :one_for_one, name: __MODULE__)
   end
 end

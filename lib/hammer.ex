@@ -8,10 +8,10 @@ defmodule Hammer do
 
   alias Hammer.Utils
 
-  @spec check_rate(id::String.t, scale_ms::integer, limit::integer)
-        :: {:allow, count::integer}
-         | {:deny,  limit::integer}
-         | {:error, reason::any}
+  @spec check_rate(id :: String.t(), scale_ms :: integer, limit :: integer) ::
+          {:allow, count :: integer}
+          | {:deny, limit :: integer}
+          | {:error, reason :: any}
   @doc """
   Check if the action you wish to perform is within the bounds of the rate-limit.
 
@@ -37,18 +37,16 @@ defmodule Hammer do
     check_rate(:single, id, scale_ms, limit)
   end
 
-  @spec check_rate(backend::atom,
-                   id::String.t,
-                   scale_ms::integer,
-                   limit::integer)
-        :: {:allow, count::integer}
-         | {:deny,  limit::integer}
-         | {:error, reason::any}
+  @spec check_rate(backend :: atom, id :: String.t(), scale_ms :: integer, limit :: integer) ::
+          {:allow, count :: integer}
+          | {:deny, limit :: integer}
+          | {:error, reason :: any}
   @doc """
   Same as check_rate/3, but allows specifying a backend
   """
   def check_rate(backend, id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
+
     case call_backend(backend, :count_hit, [key, stamp]) do
       {:ok, count} ->
         if count > limit do
@@ -56,18 +54,17 @@ defmodule Hammer do
         else
           {:allow, count}
         end
+
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  @spec inspect_bucket(id::String.t, scale_ms::integer, limit::integer)
-        :: {:ok, {count::integer,
-                  count_remaining::integer,
-                  ms_to_next_bucket::integer,
-                  created_at :: integer | nil,
-                  updated_at :: integer | nil}}
-         | {:error, reason::any}
+  @spec inspect_bucket(id :: String.t(), scale_ms :: integer, limit :: integer) ::
+          {:ok,
+           {count :: integer, count_remaining :: integer, ms_to_next_bucket :: integer,
+            created_at :: integer | nil, updated_at :: integer | nil}}
+          | {:error, reason :: any}
   @doc """
   Inspect bucket to get count, count_remaining, ms_to_next_bucket, created_at, updated_at.
   This function is free of side-effects and should be called with the same arguments you
@@ -94,37 +91,34 @@ defmodule Hammer do
     inspect_bucket(:single, id, scale_ms, limit)
   end
 
-  @spec inspect_bucket(backend::atom,
-                       id::String.t,
-                       scale_ms::integer,
-                       limit::integer)
-        :: {:ok, {count::integer,
-                  count_remaining::integer,
-                  ms_to_next_bucket::integer,
-                  created_at :: integer | nil,
-                  updated_at :: integer | nil}}
-         | {:error, reason::any}
+  @spec inspect_bucket(backend :: atom, id :: String.t(), scale_ms :: integer, limit :: integer) ::
+          {:ok,
+           {count :: integer, count_remaining :: integer, ms_to_next_bucket :: integer,
+            created_at :: integer | nil, updated_at :: integer | nil}}
+          | {:error, reason :: any}
   @doc """
   Same as inspect_bucket/3, but allows specifying a backend
   """
   def inspect_bucket(backend, id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
-    ms_to_next_bucket = (elem(key, 0) * scale_ms) + scale_ms - stamp
+    ms_to_next_bucket = elem(key, 0) * scale_ms + scale_ms - stamp
+
     case call_backend(backend, :get_bucket, [key]) do
       {:ok, nil} ->
         {:ok, {0, limit, ms_to_next_bucket, nil, nil}}
+
       {:ok, {_, count, created_at, updated_at}} ->
         count_remaining = if limit > count, do: limit - count, else: 0
-        {:ok, {count, count_remaining, ms_to_next_bucket,
-          created_at, updated_at}}
+        {:ok, {count, count_remaining, ms_to_next_bucket, created_at, updated_at}}
+
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  @spec delete_buckets(id::String.t)
-        :: {:ok, count::integer}
-          | {:error, reason::any}
+  @spec delete_buckets(id :: String.t()) ::
+          {:ok, count :: integer}
+          | {:error, reason :: any}
   @doc """
   Delete all buckets belonging to the provided id, including the current one.
   Effectively resets the rate-limit for the id.
@@ -146,9 +140,9 @@ defmodule Hammer do
     delete_buckets(:single, id)
   end
 
-  @spec delete_buckets(backend::atom, id::String.t)
-        :: {:ok, count::integer}
-          | {:error, reason::any}
+  @spec delete_buckets(backend :: atom, id :: String.t()) ::
+          {:ok, count :: integer}
+          | {:error, reason :: any}
   @doc """
   Same as delete_buckets/1, but allows specifying a backend
   """
@@ -156,12 +150,11 @@ defmodule Hammer do
     call_backend(backend, :delete_buckets, [id])
   end
 
-  @spec make_rate_checker(id_prefix::String.t,
-                          scale_ms::integer,
-                          limit::integer)
-        :: ((id::String.t) -> {:allow, count::integer}
-                            | {:deny,  limit::integer}
-                            | {:error, reason::any})
+  @spec make_rate_checker(id_prefix :: String.t(), scale_ms :: integer, limit :: integer) ::
+          (id :: String.t() ->
+             {:allow, count :: integer}
+             | {:deny, limit :: integer}
+             | {:error, reason :: any})
   @doc """
   Make a rate-checker function, with the given `id` prefix, scale_ms and limit.
 
@@ -190,24 +183,26 @@ defmodule Hammer do
     make_rate_checker(:single, id_prefix, scale_ms, limit)
   end
 
-  @spec make_rate_checker(backend::atom,
-                          id_prefix::String.t,
-                          scale_ms::integer,
-                          limit::integer)
-        :: ((id::String.t) -> {:allow, count::integer}
-                            | {:deny,  limit::integer}
-                            | {:error, reason::any})
+  @spec make_rate_checker(
+          backend :: atom,
+          id_prefix :: String.t(),
+          scale_ms :: integer,
+          limit :: integer
+        ) ::
+          (id :: String.t() ->
+             {:allow, count :: integer}
+             | {:deny, limit :: integer}
+             | {:error, reason :: any})
   @doc """
   """
   def make_rate_checker(backend, id_prefix, scale_ms, limit) do
-     fn (id) ->
-       check_rate(backend, "#{id_prefix}#{id}", scale_ms, limit)
-     end
-   end
+    fn id ->
+      check_rate(backend, "#{id_prefix}#{id}", scale_ms, limit)
+    end
+  end
 
   defp call_backend(which, function, args) do
     backend = Utils.get_backend_module(which)
     apply(backend, function, args)
   end
-
 end

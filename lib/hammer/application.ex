@@ -14,11 +14,13 @@ defmodule Hammer.Application do
   require Logger
 
   def start(_type, _args) do
-    config = Application.get_env(
-      :hammer,
-      :backend,
-      {Hammer.Backend.ETS, []}
-    )
+    config =
+      Application.get_env(
+        :hammer,
+        :backend,
+        {Hammer.Backend.ETS, []}
+      )
+
     Hammer.Supervisor.start_link(config, name: Hammer.Supervisor)
   end
 end

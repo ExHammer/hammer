@@ -1,18 +1,18 @@
 # Hammer makefile
 
-default: test docs credo coveralls
+default: format test docs credo coveralls
 
 
-test:
+format:
+	mix format mix.exs "lib/**/*.{ex,exs}"
+
+
+test: format
 	mix test --no-start
 
 
 docs:
 	mix docs
-
-
-credo:
-	mix credo --strict
 
 
 coveralls:

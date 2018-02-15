@@ -23,4 +23,4 @@ coveralls-travis:
 	mix coveralls.travis --no-start
 
 
-.PHONY: test docs credo coveralls coveralls-travis
+.PHONY: format test docs credo coveralls coveralls-travis

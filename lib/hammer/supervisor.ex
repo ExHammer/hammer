@@ -34,12 +34,12 @@ defmodule Hammer.Supervisor do
     children = [
       to_child_spec(config)
     ]
-    Supervisor.init(children, strategy: :one_for_one, name: __MODULE__)
+    Supervisor.init(children, strategy: :one_for_one)
   end
   def init(config) when is_list(config) do
     children = config
     |> Enum.map(fn ({_k, c}) -> to_child_spec(c) end)
-    Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 
   defp to_child_spec({mod, args}) do

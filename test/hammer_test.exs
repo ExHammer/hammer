@@ -10,12 +10,12 @@ defmodule HammerTest do
     check = Hammer.make_rate_checker("some-prefix:", 10000, 2)
     assert {:allow, 1} = check.("aaa")
     assert {:allow, 2} = check.("aaa")
-    assert {:deny,  2} = check.("aaa")
-    assert {:deny,  2} = check.("aaa")
+    assert {:deny, 2} = check.("aaa")
+    assert {:deny, 2} = check.("aaa")
     assert {:allow, 1} = check.("bbb")
     assert {:allow, 2} = check.("bbb")
-    assert {:deny,  2} = check.("bbb")
-    assert {:deny,  2} = check.("bbb")
+    assert {:deny, 2} = check.("bbb")
+    assert {:deny, 2} = check.("bbb")
   end
 
   test "returns {:ok, 1} tuple on first access" do
@@ -40,7 +40,7 @@ defmodule HammerTest do
     assert {:allow, 1} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:allow, 2} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:deny, 2} = Hammer.check_rate("my-bucket", 1000, 2)
-    :timer.sleep 1001
+    :timer.sleep(1001)
     assert {:allow, 1} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:allow, 2} = Hammer.check_rate("my-bucket", 1000, 2)
     assert {:deny, 2} = Hammer.check_rate("my-bucket", 1000, 2)
@@ -71,7 +71,6 @@ defmodule HammerTest do
 
     assert {:ok, 0} = Hammer.delete_buckets("unknown-bucket")
   end
-
 end
 
 defmodule ETSTest do
@@ -111,18 +110,14 @@ defmodule ETSTest do
     assert {:ok, 3} = Hammer.Backend.ETS.count_hit(key, stamp)
     assert {:ok, 1} = Hammer.Backend.ETS.delete_buckets("three")
   end
-
 end
 
 defmodule HammerBackendETSSupervisorTest do
-
   use ExUnit.Case
 
   test "supervisor starts correctly" do
     assert {:ok, _pid} = Hammer.Backend.ETS.Supervisor.start_link()
   end
-
-
 end
 
 defmodule UtilsTest do
@@ -149,8 +144,7 @@ defmodule UtilsTest do
     Application.put_env(:hammer, :backend, {Hammer.Backend.SomeBackend, []})
     assert Hammer.Utils.get_backend_module(:single) == Hammer.Backend.SomeBackend
     # with a specific backend config
-    Application.put_env(:hammer, :backend, [one: {Hammer.Backend.SomeBackend, []}])
+    Application.put_env(:hammer, :backend, one: {Hammer.Backend.SomeBackend, []})
     assert Hammer.Utils.get_backend_module(:one) == Hammer.Backend.SomeBackend
   end
-
 end

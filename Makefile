@@ -4,7 +4,7 @@ default: format test docs credo coveralls
 
 
 format:
-	mix format mix.exs "lib/**/*.{ex,exs}"
+	mix format mix.exs "lib/**/*.{ex,exs}" "test/**/*.{ex,exs}"
 
 
 test: format

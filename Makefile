@@ -1,6 +1,6 @@
 # Hammer makefile
 
-default: format test docs credo coveralls
+default: format test docs coveralls
 
 
 format:
@@ -23,4 +23,4 @@ coveralls-travis:
 	mix coveralls.travis --no-start
 
 
-.PHONY: format test docs credo coveralls coveralls-travis
+.PHONY: format test docs coveralls coveralls-travis

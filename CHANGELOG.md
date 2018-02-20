@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.0
+
+### Changed
+
+- Require elixir >= 1.6
+- Use a more sane supervision tree structure
+
+
 ## 2.1.0
 
 ### Changed

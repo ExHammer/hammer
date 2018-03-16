@@ -20,7 +20,9 @@ defmodule Hammer.Backend.ETS.Supervisor do
   end
 
   def init(config) do
-    backend_config = config |> Enum.filter(fn {k, _v} -> Enum.member?(@config_options, k) end)
+    backend_config =
+      config
+      |> Enum.filter(fn {k, _v} -> Enum.member?(@config_options, k) end)
 
     children = [
       {Hammer.Backend.ETS, [backend_config]}

@@ -32,7 +32,6 @@ defmodule Hammer.Supervisor do
 
   def init(config) when is_tuple(config) do
     children = [
-      # to_child_spec(config)
       to_pool_spec(:hammer_backend_single_pool, config)
     ]
 
@@ -46,15 +45,6 @@ defmodule Hammer.Supervisor do
 
     Supervisor.init(children, strategy: :one_for_one)
   end
-
-  # defp to_child_spec({mod, args}) do
-  #   supervisor_module = String.to_atom(Atom.to_string(mod) <> ".Supervisor")
-
-  #   Supervisor.child_spec(
-  #     {supervisor_module, args},
-  #     id: supervisor_module
-  #   )
-  # end
 
   defp to_pool_spec(name, {mod, args}) do
     opts = [

@@ -51,6 +51,7 @@ defmodule Hammer.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
+      {:poolboy, "~> 1.5"},
       {:ex_doc, "~> 0.16", only: :dev},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       {:excoveralls, "~> 0.5", only: :test}

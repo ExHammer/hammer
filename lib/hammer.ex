@@ -202,7 +202,14 @@ defmodule Hammer do
   end
 
   defp call_backend(which, function, args) do
+    pool = Utils.pool_name(which)
     backend = Utils.get_backend_module(which)
-    apply(backend, function, args)
+
+    :poolboy.transaction(
+      pool,
+      fn pid -> apply(backend, function, [pid | args]) end,
+      # TODO: make timeout configurable
+      60000
+    )
   end
 end

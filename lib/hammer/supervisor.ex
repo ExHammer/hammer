@@ -32,7 +32,8 @@ defmodule Hammer.Supervisor do
 
   def init(config) when is_tuple(config) do
     children = [
-      to_child_spec(config)
+      # to_child_spec(config)
+      to_pool_spec(:hammer_backend_single_pool, config)
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -41,17 +42,28 @@ defmodule Hammer.Supervisor do
   def init(config) when is_list(config) do
     children =
       config
-      |> Enum.map(fn {_k, c} -> to_child_spec(c) end)
+      |> Enum.map(fn {k, c} -> to_pool_spec(:"hammer_backend_#{k}_pool", c) end)
 
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  defp to_child_spec({mod, args}) do
-    supervisor_module = String.to_atom(Atom.to_string(mod) <> ".Supervisor")
+  # defp to_child_spec({mod, args}) do
+  #   supervisor_module = String.to_atom(Atom.to_string(mod) <> ".Supervisor")
 
-    Supervisor.child_spec(
-      {supervisor_module, args},
-      id: supervisor_module
-    )
+  #   Supervisor.child_spec(
+  #     {supervisor_module, args},
+  #     id: supervisor_module
+  #   )
+  # end
+
+  defp to_pool_spec(name, {mod, args}) do
+    opts = [
+      name: {:local, name},
+      worker_module: mod,
+      size: 4,
+      max_overflow: 4
+    ]
+
+    :poolboy.child_spec(name, opts, args)
   end
 end

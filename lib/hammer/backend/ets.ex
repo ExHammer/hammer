@@ -37,7 +37,7 @@ defmodule Hammer.Backend.ETS do
   end
 
   def start(args) do
-    GenServer.start(__MODULE__, args, name: __MODULE__)
+    GenServer.start(__MODULE__, args)
   end
 
   def start_link do
@@ -47,7 +47,7 @@ defmodule Hammer.Backend.ETS do
   @doc """
   """
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args, name: __MODULE__)
+    GenServer.start_link(__MODULE__, args)
   end
 
   def stop do
@@ -57,34 +57,44 @@ defmodule Hammer.Backend.ETS do
   @doc """
   Record a hit in the bucket identified by `key`
   """
-  @spec count_hit(key :: {bucket :: integer, id :: String.t()}, now :: integer) ::
+  @spec count_hit(
+          pid :: pid(),
+          key :: {bucket :: integer, id :: String.t()},
+          now :: integer
+        ) ::
           {:ok, count :: integer}
           | {:error, reason :: any}
-  def count_hit(key, now) do
-    GenServer.call(__MODULE__, {:count_hit, key, now})
+  def count_hit(pid, key, now) do
+    GenServer.call(pid, {:count_hit, key, now})
   end
 
   @doc """
   Retrieve information about the bucket identified by `key`
   """
-  @spec get_bucket(key :: {bucket :: integer, id :: String.t()}) ::
+  @spec get_bucket(
+          pid :: pid(),
+          key :: {bucket :: integer, id :: String.t()}
+        ) ::
           {:ok,
            {key :: {bucket :: integer, id :: String.t()}, count :: integer, created :: integer,
             updated :: integer}}
           | {:ok, nil}
           | {:error, reason :: any}
-  def get_bucket(key) do
-    GenServer.call(__MODULE__, {:get_bucket, key})
+  def get_bucket(pid, key) do
+    GenServer.call(pid, {:get_bucket, key})
   end
 
   @doc """
   Delete all buckets associated with `id`.
   """
-  @spec delete_buckets(id :: String.t()) ::
+  @spec delete_buckets(
+          pid :: pid(),
+          id :: String.t()
+        ) ::
           {:ok, count_deleted :: integer}
           | {:error, reason :: any}
-  def delete_buckets(id) do
-    GenServer.call(__MODULE__, {:delete_buckets, id})
+  def delete_buckets(pid, id) do
+    GenServer.call(pid, {:delete_buckets, id})
   end
 
   ## GenServer Callbacks
@@ -93,7 +103,15 @@ defmodule Hammer.Backend.ETS do
     ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
     cleanup_interval_ms = Keyword.get(args, :cleanup_interval_ms)
     expiry_ms = Keyword.get(args, :expiry_ms)
-    :ets.new(ets_table_name, [:named_table, :ordered_set])
+
+    case :ets.info(ets_table_name) do
+      :undefined ->
+        :ets.new(ets_table_name, [:named_table, :ordered_set, :public])
+
+      _ ->
+        nil
+    end
+
     :timer.send_interval(cleanup_interval_ms, :prune)
 
     state = %{

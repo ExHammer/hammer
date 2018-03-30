@@ -1,27 +1,9 @@
 defmodule Hammer.Supervisor do
   @moduledoc """
-  Top-level Supervisor for the Hammer application
-
-  Example of config for multiple-backends:
-
-      config :hammer,
-      backend: [
-        ets: {
-          Hammer.Backend.ETS,
-          [
-            ets_table_name: :hammer_backend_ets_buckets,
-            expiry_ms: 60_000 * 60 * 2,
-            cleanup_interval_ms: 60_000 * 2
-          ]
-        },
-        redis: {
-          Hammer.Backend.Redis,
-          [
-            expiry_ms: 60_000 * 60 * 2,
-            redix_config: [host: "localhost", port: 6379]
-          ]
-        }
-      ]
+  Top-level Supervisor for the Hammer application.
+  Starts a set of poolboy pools based on provided configuration,
+  which are latter called to by the `Hammer` module.
+  See the Application module for configuration examples.
   """
 
   use Supervisor
@@ -30,6 +12,7 @@ defmodule Hammer.Supervisor do
     Supervisor.start_link(__MODULE__, config, opts)
   end
 
+  # Single backend
   def init(config) when is_tuple(config) do
     children = [
       to_pool_spec(:hammer_backend_single_pool, config)
@@ -38,6 +21,7 @@ defmodule Hammer.Supervisor do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
+  # Multiple backends
   def init(config) when is_list(config) do
     children =
       config
@@ -46,6 +30,7 @@ defmodule Hammer.Supervisor do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
+  # Private helpers
   defp to_pool_spec(name, {mod, args}) do
     opts = [
       name: {:local, name},

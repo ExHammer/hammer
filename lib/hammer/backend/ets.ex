@@ -91,9 +91,10 @@ defmodule Hammer.Backend.ETS do
   ## GenServer Callbacks
 
   def init(args) do
-    ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
-    cleanup_interval_ms = Keyword.get(args, :cleanup_interval_ms)
-    expiry_ms = Keyword.get(args, :expiry_ms)
+    [ config | _] = args
+    ets_table_name = Keyword.get(config, :ets_table_name, :hammer_ets_buckets)
+    cleanup_interval_ms = Keyword.get(config, :cleanup_interval_ms)
+    expiry_ms = Keyword.get(config, :expiry_ms)
     :ets.new(ets_table_name, [:named_table, :ordered_set])
     :timer.send_interval(cleanup_interval_ms, :prune)
 

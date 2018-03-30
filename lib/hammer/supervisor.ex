@@ -35,7 +35,7 @@ defmodule Hammer.Supervisor do
     opts = [
       name: {:local, name},
       worker_module: mod,
-      size: 4,
+      size: 4,           # TODO: make the pool size configurable
       max_overflow: 4
     ]
 

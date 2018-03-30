@@ -2,8 +2,8 @@ defmodule Hammer do
   @moduledoc """
   Documentation for Hammer module.
 
-  This is the main API for the Hammer rate-limiter. This module assumes an appropriate
-  backend has been configured.
+  This is the main API for the Hammer rate-limiter. This module assumes a
+  backend pool has been started, most likely by the Hammer application.
   """
 
   alias Hammer.Utils

@@ -27,6 +27,10 @@ defmodule Hammer.Backend.ETS do
 
   @behaviour Hammer.Backend
 
+  @type bucket_key :: {bucket :: integer, id :: String.t()}
+  @type bucket_info ::
+          {key :: bucket_key, count :: integer, created :: integer, updated :: integer}
+
   use GenServer
   alias Hammer.Utils
 
@@ -59,7 +63,7 @@ defmodule Hammer.Backend.ETS do
   """
   @spec count_hit(
           pid :: pid(),
-          key :: {bucket :: integer, id :: String.t()},
+          key :: bucket_key,
           now :: integer
         ) ::
           {:ok, count :: integer}
@@ -73,11 +77,9 @@ defmodule Hammer.Backend.ETS do
   """
   @spec get_bucket(
           pid :: pid(),
-          key :: {bucket :: integer, id :: String.t()}
+          key :: bucket_key
         ) ::
-          {:ok,
-           {key :: {bucket :: integer, id :: String.t()}, count :: integer, created :: integer,
-            updated :: integer}}
+          {:ok, info :: bucket_info}
           | {:ok, nil}
           | {:error, reason :: any}
   def get_bucket(pid, key) do

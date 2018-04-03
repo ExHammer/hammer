@@ -3,18 +3,30 @@ defmodule Hammer.Backend do
   The backend Behaviour module
   """
 
-  @callback count_hit(key :: {bucket :: integer, id :: String.t()}, now :: integer) ::
+  @type bucket_key :: {bucket :: integer, id :: String.t()}
+  @type bucket_info ::
+          {key :: bucket_key, count :: integer, created :: integer, updated :: integer}
+
+  @callback count_hit(
+              pid :: pid(),
+              key :: bucket_key,
+              now :: integer
+            ) ::
               {:ok, count :: integer}
               | {:error, reason :: any}
 
-  @callback get_bucket(key :: {bucket :: integer, id :: String.t()}) ::
-              {:ok,
-               {key :: {bucket :: integer, id :: String.t()}, count :: integer,
-                created :: integer, updated :: integer}}
+  @callback get_bucket(
+              pid :: pid(),
+              key :: bucket_key
+            ) ::
+              {:ok, info :: bucket_info}
               | {:ok, nil}
               | {:error, reason :: any}
 
-  @callback delete_buckets(id :: String.t()) ::
+  @callback delete_buckets(
+              pid :: pid(),
+              id :: String.t()
+            ) ::
               {:ok, count_deleted :: integer}
               | {:error, reason :: any}
 end

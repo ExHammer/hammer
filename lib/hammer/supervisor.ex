@@ -32,11 +32,14 @@ defmodule Hammer.Supervisor do
 
   # Private helpers
   defp to_pool_spec(name, {mod, args}) do
+    pool_size = args[:pool_size] || 4
+    pool_max_overflow = args[:pool_max_overflow] || 4
+
     opts = [
       name: {:local, name},
       worker_module: mod,
-      size: 4,           # TODO: make the pool size configurable
-      max_overflow: 4
+      size: pool_size,
+      max_overflow: pool_max_overflow
     ]
 
     :poolboy.child_spec(name, opts, args)

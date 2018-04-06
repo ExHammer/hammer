@@ -3,10 +3,11 @@
 
 See `Hammer.Backend.ETS` for a realistic example of a Hammer Backend module.
 
-Backends for Hammer are expected to implement
-the [Hammer.Backend](/hammer/Hammer.Backend.html) behaviour, under the name
-`Hammer.Backend.Foo`, and to provide a Supervisor module under the name
-`Hammer.Backend.Foo.Supervisor`.
+Backends for Hammer are expected to implement the
+[Hammer.Backend](/hammer/Hammer.Backend.html) behaviour, and be named something
+like `Hammer.Backend.Foo`. Several instances of the backend worker will be
+started as a worker pool (using the poolboy library), and so backend processes
+should not assume that there is only one instance of this server process.
 
 
 ## The `Hammer.Backend` behaviour
@@ -31,8 +32,9 @@ Example:
                                 foodb_config: [host: "localhost"])
 ```
 
-### count_hit(key, timestamp)
+### count_hit(pid, key, timestamp)
 
+- `pid`: pid of the backend process being called
 - `key`: The key of the current bucket, in the form of a tuple `{bucket::integer, id::String}`.
 - `timestamp`: The current timestamp (integer)
 
@@ -42,8 +44,9 @@ Returns: Either a Tuple of `{:ok, count}` where count is the current count of th
 or `{:error, reason}`.
 
 
-### get_bucket(key)
+### get_bucket(pid, key)
 
+- `pid`: pid of the backend process being called
 - `key`: The key of the current bucket, in the form of a tuple `{bucket::integer, id::String}`.
 
 Returns: Either a tuple of `{:ok, bucket}`, where `bucket` is a tuple of
@@ -52,31 +55,11 @@ Returns: Either a tuple of `{:ok, bucket}`, where `bucket` is a tuple of
 or `{:error, reason}`
 
 
-### delete_buckets(id)
+### delete_buckets(pid, id)
 
+- `pid`: pid of the backend process being called
 - `id`: rate-limit id (string) to delete
 
 This should delete all existing buckets associated with the supplied `id`.
 
 Returns: Either `{:ok, count}`, or `{:error, reason}`
-
-
-## The Supervisor
-
-The supervisor module should implement a `start_link/2` with the following signature:
-
-```elixir
-start_link(config::Keyword.t, options::Keyword.t)
-```
-
-It should start and supervise whichever processes are required to make the
-backend work.
-
-The `config` parameter is the backend-specific keyword-list which is the second
-element in the `:backend` configuration tuple. The `options` parameter is a
-keyword-list of Supervisor options, and should generally be passed straight
-through as the third argument to `Supervisor.start_link`.
-
-Again, the source-code for the `Hammer.Backend.ETS` and
-`Hammer.Backend.ETS.Supervisor` modules are great examples of how to implement a
-backend.

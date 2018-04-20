@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.0.0
+
+## Changed
+
+- Use a worker-pool for the backend (via poolboy),
+  this avoids bottle-necking all traffic through a single hammer
+  process, thus improving throughput for the system overall
+
+## Added
+
+- New configuration options for backends:
+  - `:pool_size`, determines the number of workers in the pool (default 4)
+  - `:pool_max_overflow`, maximum extra workers to be spawned when the
+    system is under pressure (default 4)
+
+
 ## 3.0.0
 
 ### Changed

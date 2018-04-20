@@ -71,6 +71,12 @@ The `:expiry_ms` value should be configured to be longer than the life of the
 longest bucket you will be using, as otherwise the bucket could be deleted while
 it is still counting up hits for its time period.
 
+The size of the backend worker pool can be tweaked with the `:pool_size` and
+`:pool_max_overflow` options, (which are then supplied to `poolboy`). `:pool_size`
+determines the size of the pool, and `:pool_max_overflow` determines how many extra
+workers can be spawned when the system is under pressure. The default for both is `4`,
+which will be fine for most systems.
+
 Luckily, even if you don't configure `:hammer` at all, the application will
 default to the ETS backend anyway, with some sensible defaults.
 
@@ -125,7 +131,9 @@ the `:hammer` application:
 config :hammer,
   backend: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
                                    redix_config: [host: "localhost",
-                                                  port: 6379]]}
+                                                  port: 6379],
+                                   pool_size: 4,
+                                   pool_max_overflow: 2]}
 ```
 
 Then it should all Just Work™.

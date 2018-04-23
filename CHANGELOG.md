@@ -14,6 +14,8 @@
   - `:pool_size`, determines the number of workers in the pool (default 4)
   - `:pool_max_overflow`, maximum extra workers to be spawned when the
     system is under pressure (default 4)
+- Multiple instances of the same backend! You can now have two ETS backends,
+  fifteen Redis's, whatever you want
 
 
 ## 3.0.0

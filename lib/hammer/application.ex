@@ -11,7 +11,7 @@ defmodule Hammer.Application do
   Example of a single backend:
 
       config :hammer,
-        backend: {Hammer.Backend.ETS, [expiry: 60_000 * 60 * 2]}
+        backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 2]}
 
   Example of config for multiple-backends:
 

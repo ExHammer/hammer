@@ -168,15 +168,32 @@ Hammer.check_rate(:redis,     "upload:#{user_id}", 60_000, 5)
 When using multiple backends the backend specifier key is mandatory, there is no
 notion of a default backend.
 
-Note: It's currently not possible to use multiple instances of the same backend
-module, so it's not possible to have two separate Redis backends for example.
-We'll probably remove this restriction at some point in the future.
+In version 4.0 and up, it is even possible to have multiple instances of the same
+backend type, like so:
+
+```elixir
+config :hammer,
+  backend: [
+    redis_one: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
+                                       redix_config: [host: "localhost",
+                                                      port: 6666]]}
+    redis_two: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 5,
+                                       redix_config: [host: "localhost",
+                                                      port: 7777]]}
+  ]
+```
 
 
 ## Further Reading
 
 See the docs for the [Hammer](/hammer/Hammer.html) module for full documentation
 on all the functions created by `use Hammer`.
+
+See the [Hammer.Application](/hammer/Hammer.Application.html) for all
+configuration options.
+
+Also, consult the documentation for the backend you are using, for any extra
+configuration options that may be relevant.
 
 See the [Creating Backends](/hammer/creatingbackends.html) for information on
 creating new backends for Hammer.

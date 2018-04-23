@@ -9,9 +9,9 @@ storage suits your needs. Currently, backends for ETS and
 ```elixir
     case Hammer.check_rate("file_upload:#{user_id}", 60_000, 10) do
       {:allow, _count} ->
-        # ...
+        Upload.file(data)
       {:deny, _limit} ->
-        # ...
+        render_error_page()
     end
 ```
 

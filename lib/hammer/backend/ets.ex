@@ -34,6 +34,7 @@ defmodule Hammer.Backend.ETS do
 
   use GenServer
   alias Hammer.Utils
+  require Logger
 
   ## Public API
 
@@ -194,6 +195,7 @@ defmodule Hammer.Backend.ETS do
     %{expiry_ms: expiry_ms, ets_table_name: tn} = state
     now = Utils.timestamp()
     expire_before = now - expiry_ms
+    Logger.info("Hammer.prune() called expire_before=#{inspect expire_before} expiry_ms=#{inspect expiry_ms} tn=#{inspect tn}")
 
     :ets.select_delete(tn, [
       {{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}

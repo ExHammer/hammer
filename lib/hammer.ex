@@ -16,8 +16,9 @@ defmodule Hammer do
   Check if the action you wish to perform is within the bounds of the rate-limit.
 
   Args:
-  - `id`: String name of the bucket. Usually the bucket name is comprised of some fixed prefix,
-  with some dynamic string appended, such as an IP address or user id.
+  - `id`: String name of the bucket. Usually the bucket name is comprised of
+  some fixed prefix, with some dynamic string appended, such as an IP address or
+  user id.
   - `scale_ms`: Integer indicating size of bucket in milliseconds
   - `limit`: Integer maximum count of actions within the bucket
 
@@ -66,14 +67,16 @@ defmodule Hammer do
             created_at :: integer | nil, updated_at :: integer | nil}}
           | {:error, reason :: any}
   @doc """
-  Inspect bucket to get count, count_remaining, ms_to_next_bucket, created_at, updated_at.
-  This function is free of side-effects and should be called with the same arguments you
-  would use for `check_rate` if you intended to increment and check the bucket counter.
+  Inspect bucket to get count, count_remaining, ms_to_next_bucket, created_at,
+  updated_at. This function is free of side-effects and should be called with
+  the same arguments you would use for `check_rate` if you intended to increment
+  and check the bucket counter.
 
   Arguments:
 
-  - `id`: String name of the bucket. Usually the bucket name is comprised of some fixed prefix,
-  with some dynamic string appended, such as an IP address or user id.
+  - `id`: String name of the bucket. Usually the bucket name is comprised of
+    some fixed prefix,with some dynamic string appended, such as an IP address
+    or user id.
   - `scale_ms`: Integer indicating size of bucket in milliseconds
   - `limit`: Integer maximum count of actions within the bucket
 
@@ -164,8 +167,8 @@ defmodule Hammer do
   - `scale_ms`: Integer indicating size of bucket in milliseconds
   - `limit`: Integer maximum count of actions within the bucket
 
-  Returns a function which accepts an `id` suffix, which will be combined with the `id_prefix`.
-  Calling this returned function is equivalent to:
+  Returns a function which accepts an `id` suffix, which will be combined with
+  the `id_prefix`. Calling this returned function is equivalent to:
   `Hammer.check_rate("\#{id_prefix}\#{id}", scale_ms, limit)`
 
   Example:

@@ -134,12 +134,10 @@ defmodule Hammer.Backend.ETS do
 
     try do
       if :ets.member(tn, key) do
-        [count, _, _] =
+        [count, _] =
           :ets.update_counter(tn, key, [
             # Increment count field
             {2, 1},
-            # Do nothing with created_at field
-            {3, 0},
             # Set updated_at to now
             {4, 1, 0, now}
           ])

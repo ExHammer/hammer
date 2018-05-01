@@ -134,9 +134,19 @@ defmodule Hammer.Backend.ETS do
 
     try do
       if :ets.member(tn, key) do
-        [count, _, _] = :ets.update_counter(tn, key, [{2, 1}, {3, 0}, {4, 1, 0, now}])
+        [count, _, _] =
+          :ets.update_counter(tn, key, [
+            # Increment count field
+            {2, 1},
+            # Do nothing with created_at field
+            {3, 0},
+            # Set updated_at to now
+            {4, 1, 0, now}
+          ])
+
         {:reply, {:ok, count}, state}
       else
+        # Insert {key, count, created_at, updated_at}
         true = :ets.insert(tn, {key, 1, now, now})
         {:reply, {:ok, 1}, state}
       end

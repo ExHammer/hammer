@@ -2,10 +2,11 @@ defmodule Hammer.Backend.ETS do
   @moduledoc """
   An ETS backend for Hammer
 
-  The public API of this module is used by Hammer to store information about rate-limit 'buckets'.
-  A bucket is identified by a `key`, which is a tuple `{bucket_number, id}`.
-  The essential schema of a bucket is: `{key, count, created_at, updated_at}`, although backends
-  are free to store and retrieve this data in whichever way they wish.
+  The public API of this module is used by Hammer to store information about
+  rate-limit 'buckets'. A bucket is identified by a `key`, which is a tuple
+  `{bucket_number, id}`. The essential schema of a bucket is:
+  `{key, count, created_at, updated_at}`, although backends are free to
+  store and retrieve this data in whichever way they wish.
 
   Use `start` or `start_link` to start the server:
 

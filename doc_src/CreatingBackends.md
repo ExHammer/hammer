@@ -44,6 +44,19 @@ Returns: Either a Tuple of `{:ok, count}` where count is the current count of th
 or `{:error, reason}`.
 
 
+### count_hit(pid, key, timestamp, increment)
+
+- `pid`: pid of the backend process being called
+- `key`: The key of the current bucket, in the form of a tuple `{bucket::integer, id::String}`.
+- `timestamp`: The current timestamp (integer)
+- `increment`: The number by which to increment the bucket
+
+This function should increment the count in the bucket by the specified increment.
+
+Returns: Either a Tuple of `{:ok, count}` where count is the current count of the bucket,
+or `{:error, reason}`.
+
+
 ### get_bucket(pid, key)
 
 - `pid`: pid of the backend process being called

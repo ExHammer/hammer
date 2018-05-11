@@ -112,6 +112,32 @@ case Hammer.check_rate("upload_file:#{user_id}", 60_000, 10) do
 end
 ```
 
+
+## Custom increments
+
+The `Hammer` module also includes  a `check_rate_inc` function, which allows you
+to specify the number by which to increment the current bucket. This is useful
+for rate-limiting APIs which have some idea of "cost", where the cost of a given
+operation can be determined and expressed as an integer function, which allows you
+to specify the number by which to increment the current bucket. This is useful
+for rate-limiting APIs which have some idea of "cost", where the cost of a given
+operation can be determined and expressed as an integer.
+
+Example:
+
+```elixir
+# Bulk file upload
+user_id = get_user_id_somehow()
+n = get_number_of_files()
+case Hammer.check_rate_inc("upload_file_bulk:#{user_id}", 60_000, 10, n) do
+  {:allow, _count} ->
+    # upload all of the files
+  {:deny, _limit} ->
+    # deny the request
+end
+```
+
+
 ## Switching to Redis
 
 There may come a time when ETS just doesn't cut it, for example if we end up

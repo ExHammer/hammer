@@ -74,7 +74,7 @@ defmodule Hammer.Backend.ETS do
   end
 
   @doc """
-  Record a hit in the bucket identified by `key`
+  Record a hit in the bucket identified by `key`, with a custom increment
   """
   @spec count_hit(
           pid :: pid(),

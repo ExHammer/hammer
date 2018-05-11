@@ -71,7 +71,9 @@ defmodule Hammer do
           | {:deny, limit :: integer}
           | {:error, reason :: any}
   @doc """
-  Todo
+  Same as check_rate/3, but allows the increment number to be specified.
+  This is useful for limiting apis which have some idea of 'cost', where the cost
+  of each hit can be specified.
   """
   def check_rate_inc(id, scale_ms, limit, increment) do
     check_rate_inc(:single, id, scale_ms, limit, increment)
@@ -88,7 +90,9 @@ defmodule Hammer do
           | {:deny, limit :: integer}
           | {:error, reason :: any}
   @doc """
-  Todo
+  Same as check_rate/4, but allows the increment number to be specified.
+  This is useful for limiting apis which have some idea of 'cost', where the cost
+  of each hit can be specified.
   """
   def check_rate_inc(backend, id, scale_ms, limit, increment) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)

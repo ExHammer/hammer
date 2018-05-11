@@ -61,6 +61,51 @@ defmodule Hammer do
     end
   end
 
+  @spec check_rate_inc(
+          id :: String.t(),
+          scale_ms :: integer,
+          limit :: integer,
+          increment :: integer
+        ) ::
+          {:allow, count :: integer}
+          | {:deny, limit :: integer}
+          | {:error, reason :: any}
+  @doc """
+  Todo
+  """
+  def check_rate_inc(id, scale_ms, limit, increment) do
+    check_rate_inc(:single, id, scale_ms, limit, increment)
+  end
+
+  @spec check_rate_inc(
+          backend :: atom,
+          id :: String.t(),
+          scale_ms :: integer,
+          limit :: integer,
+          increment :: integer
+        ) ::
+          {:allow, count :: integer}
+          | {:deny, limit :: integer}
+          | {:error, reason :: any}
+  @doc """
+  Todo
+  """
+  def check_rate_inc(backend, id, scale_ms, limit, increment) do
+    {stamp, key} = Utils.stamp_key(id, scale_ms)
+
+    case call_backend(backend, :count_hit, [key, stamp, increment]) do
+      {:ok, count} ->
+        if count > limit do
+          {:deny, limit}
+        else
+          {:allow, count}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   @spec inspect_bucket(id :: String.t(), scale_ms :: integer, limit :: integer) ::
           {:ok,
            {count :: integer, count_remaining :: integer, ms_to_next_bucket :: integer,

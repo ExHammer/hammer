@@ -70,7 +70,22 @@ defmodule Hammer.Backend.ETS do
           {:ok, count :: integer}
           | {:error, reason :: any}
   def count_hit(pid, key, now) do
-    GenServer.call(pid, {:count_hit, key, now})
+    GenServer.call(pid, {:count_hit, key, now, 1})
+  end
+
+  @doc """
+  Record a hit in the bucket identified by `key`
+  """
+  @spec count_hit(
+          pid :: pid(),
+          key :: bucket_key,
+          now :: integer,
+          increment :: integer
+        ) ::
+          {:ok, count :: integer}
+          | {:error, reason :: any}
+  def count_hit(pid, key, now, increment) do
+    GenServer.call(pid, {:count_hit, key, now, increment})
   end
 
   @doc """
@@ -130,7 +145,7 @@ defmodule Hammer.Backend.ETS do
     {:stop, :normal, :ok, state}
   end
 
-  def handle_call({:count_hit, key, now}, _from, state) do
+  def handle_call({:count_hit, key, now, increment}, _from, state) do
     %{ets_table_name: tn} = state
 
     try do
@@ -138,7 +153,7 @@ defmodule Hammer.Backend.ETS do
         [count, _] =
           :ets.update_counter(tn, key, [
             # Increment count field
-            {2, 1},
+            {2, increment},
             # Set updated_at to now
             {4, 1, 0, now}
           ])
@@ -146,8 +161,8 @@ defmodule Hammer.Backend.ETS do
         {:reply, {:ok, count}, state}
       else
         # Insert {key, count, created_at, updated_at}
-        true = :ets.insert(tn, {key, 1, now, now})
-        {:reply, {:ok, 1}, state}
+        true = :ets.insert(tn, {key, increment, now, now})
+        {:reply, {:ok, increment}, state}
       end
     rescue
       e ->

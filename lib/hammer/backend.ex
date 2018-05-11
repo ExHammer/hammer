@@ -15,6 +15,15 @@ defmodule Hammer.Backend do
               {:ok, count :: integer}
               | {:error, reason :: any}
 
+  @callback count_hit(
+              pid :: pid(),
+              key :: bucket_key,
+              now :: integer,
+              increment :: integer
+            ) ::
+              {:ok, count :: integer}
+              | {:error, reason :: any}
+
   @callback get_bucket(
               pid :: pid(),
               key :: bucket_key

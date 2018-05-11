@@ -80,4 +80,19 @@ defmodule HammerTest do
 
     assert {:ok, 0} = Hammer.delete_buckets("unknown-bucket")
   end
+
+  test "count_hit_inc" do
+    assert {:allow, 4} = Hammer.check_rate_inc("cost-bucket1", 1000, 10, 4)
+    assert {:allow, 9} = Hammer.check_rate_inc("cost-bucket1", 1000, 10, 5)
+    assert {:deny, 10} = Hammer.check_rate_inc("cost-bucket1", 1000, 10, 3)
+  end
+
+  test "mixing count_hit with count_hit_inc" do
+    assert {:allow, 3} = Hammer.check_rate_inc("cost-bucket2", 1000, 10, 3)
+    assert {:allow, 4} = Hammer.check_rate("cost-bucket2", 1000, 10)
+    assert {:allow, 5} = Hammer.check_rate("cost-bucket2", 1000, 10)
+    assert {:allow, 9} = Hammer.check_rate_inc("cost-bucket2", 1000, 10, 4)
+    assert {:allow, 10} = Hammer.check_rate("cost-bucket2", 1000, 10)
+    assert {:deny, 10} = Hammer.check_rate_inc("cost-bucket2", 1000, 10, 2)
+  end
 end

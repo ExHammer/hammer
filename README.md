@@ -73,6 +73,10 @@ using Hammer in a Phoenix application.
 - Hammer.Backend.ETS (provided with Hammer)
 - [Hammer.Backend.Redis](https://github.com/ExHammer/hammer-backend-redis)
 
+## Getting Help
+
+If you're having trouble, either open an issue on this repo, or reach out to the maintainers ([https://twitter.com/shanekilkelly](@shanekilkelly)) on Twitter.
+
 
 ## Acknowledgements
 

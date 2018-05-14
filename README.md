@@ -75,7 +75,7 @@ using Hammer in a Phoenix application.
 
 ## Getting Help
 
-If you're having trouble, either open an issue on this repo, or reach out to the maintainers ([https://twitter.com/shanekilkelly](@shanekilkelly)) on Twitter.
+If you're having trouble, either open an issue on this repo, or reach out to the maintainers ([@shanekilkelly](https://twitter.com/shanekilkelly)) on Twitter.
 
 
 ## Acknowledgements

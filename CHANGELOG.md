@@ -1,5 +1,15 @@
 # Changelog
 
+
+## 5.0.0
+
+### Added
+
+- A new `check_rate_inc` function, which allows the caller to specify the
+  integer with which to increment the bucket by. This is useful for limiting
+  APIs which have some notion of "cost" per call.
+
+
 ## 4.0.0
 
 ## Changed

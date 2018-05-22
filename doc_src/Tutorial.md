@@ -118,8 +118,7 @@ end
 The `Hammer` module also includes  a `check_rate_inc` function, which allows you
 to specify the number by which to increment the current bucket. This is useful
 for rate-limiting APIs which have some idea of "cost", where the cost of a given
-operation can be determined and expressed as an integer, which allows you
-to specify the number by which to increment the current bucket.
+operation can be determined and expressed as an integer.
 
 Example:
 

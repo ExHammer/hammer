@@ -1,3 +1,5 @@
+<p align="center"><img src="logo/horizontal.png" alt="hammer" height="150px"></p>
+
 # Hammer
 
 A rate-limiter for Elixir, with pluggable storage backends.

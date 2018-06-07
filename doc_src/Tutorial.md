@@ -88,6 +88,7 @@ when your system starts), All you need to do is use the various functions in the
 `Hammer` module:
 
 - `check_rate(id::string, scale_ms::integer, limit::integer)`
+- `check_rate_inc(id::string, scale_ms::integer, limit::integer, increment::integer)`
 - `inspect_bucket(id::string, scale_ms::integer, limit::integer)`
 - `delete_buckets(id::string)`
 - `make_rate_checker(id_prefix, scale_ms, limit)`

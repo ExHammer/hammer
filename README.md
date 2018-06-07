@@ -48,6 +48,7 @@ end
 The `Hammer` module provides the following functions:
 
 - `check_rate(id, scale_ms, limit)`
+- `check_rate_inc(id, scale_ms, limit, increment)`
 - `inspect_bucket(id, scale_ms, limit)`
 - `delete_buckets(id)`
 

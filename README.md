@@ -9,6 +9,13 @@ A rate-limiter for Elixir, with pluggable storage backends.
 [![Coverage Status](https://coveralls.io/repos/github/ExHammer/hammer/badge.svg?branch=master)](https://coveralls.io/github/ExHammer/hammer?branch=master)
 
 
+## New! Hammer-Plug
+
+We've just released a new helper-library to make adding rate-limiting to your Phoenix
+(or other plug-based) application even easier: [Hamme.Plug](https://github.com/ExHammer/hammer-plug).
+
+
+
 ## Installation
 
 Hammer is [available in Hex](https://hex.pm/packages/hammer), the package can be installed

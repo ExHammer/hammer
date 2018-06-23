@@ -24,4 +24,4 @@ backends](/hammer/creatingbackends.html) for more details.
 ## New! Hammer-Plug
 
 We've just released a new helper-library to make adding rate-limiting to your Phoenix
-(or other plug-based) application even easier: [Hamme.Plug](https://github.com/ExHammer/hammer-plug).
+(or other plug-based) application even easier: [Hammer.Plug](https://github.com/ExHammer/hammer-plug).

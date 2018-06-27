@@ -17,6 +17,9 @@ storage suits your needs. Currently, backends for ETS and
 
 To get started with Hammer, read the [Tutorial](/hammer/tutorial.html).
 
+See the [Hammer.Application module](/hammer/Hammer.Application.html) for full
+documentation of configuration options.
+
 A primary goal of the Hammer project is to make it easy to implement new storage
 backends. See the [documentation on creating
 backends](/hammer/creatingbackends.html) for more details.

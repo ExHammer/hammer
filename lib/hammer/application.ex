@@ -8,6 +8,18 @@ defmodule Hammer.Application do
     `{Hammer.Backend.ETS, []}`, `[ets: {Hammer.Backend.ETS, []}, ...]`
   - `:suppress_logs`, if set to `true`, stops all log messages from Hammer
 
+  ### General Backend Options
+
+  Different backends take different options, but all will accept the following
+  options, and with the same effect:
+
+  - `:expiry_ms` (int): expiry time in milliseconds, after which a bucket will
+    be deleted. The exact mechanism for cleanup will vary by backend
+  - `:pool_size` (int): size of the backend worker pool
+  - `:pool_max_overflow` int(): number of extra workers the pool is permitted
+    to spawn when under pressure. The worker pool (managed by the poolboy library)
+    will automatically create and destroy workers up to the max-overflow limit
+
   Example of a single backend:
 
       config :hammer,

@@ -90,9 +90,7 @@ defmodule Hammer do
           | {:deny, limit :: integer}
           | {:error, reason :: any}
   @doc """
-  Same as check_rate/4, but allows the increment number to be specified.
-  This is useful for limiting apis which have some idea of 'cost', where the cost
-  of each hit can be specified.
+  Same as check_rate_inc/4, but allows specifying a backend.
   """
   def check_rate_inc(backend, id, scale_ms, limit, increment) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)

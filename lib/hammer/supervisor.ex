@@ -7,7 +7,6 @@ defmodule Hammer.Supervisor do
   """
 
   use Supervisor
-  import Supervisor.Spec, warn: false
 
   def start_link(config, opts) do
     Supervisor.start_link(__MODULE__, config, opts)
@@ -15,8 +14,7 @@ defmodule Hammer.Supervisor do
 
   # Single backend
   def init(config) when is_tuple(config) do
-    {mod, args} = config
-    children = [worker(mod, [args])]
+    children = [config]
     Supervisor.init(children, strategy: :one_for_one)
   end
 
@@ -24,9 +22,7 @@ defmodule Hammer.Supervisor do
   def init(config) when is_list(config) do
     children =
       config
-      |> Enum.map(fn {mod, [args]} ->
-        worker(mod, args)
-      end)
+      |> Enum.map(fn i -> i end)
 
     Supervisor.init(children, strategy: :one_for_one)
   end

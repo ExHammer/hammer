@@ -12,4 +12,5 @@ env:
 
 script:
   - make test
+  - make dialyzer-ci
   - make coveralls-travis

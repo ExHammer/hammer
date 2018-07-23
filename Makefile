@@ -11,6 +11,14 @@ test: format
 	mix test --no-start
 
 
+dialyzer:
+	mix dialyzer
+
+
+dialyzer-ci:
+	mix dialyzer --halt-exit-status
+
+
 docs:
 	mix docs
 

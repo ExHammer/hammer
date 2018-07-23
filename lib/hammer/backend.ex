@@ -8,7 +8,6 @@ defmodule Hammer.Backend do
           {key :: bucket_key, count :: integer, created :: integer, updated :: integer}
 
   @callback count_hit(
-              pid :: pid(),
               key :: bucket_key,
               now :: integer
             ) ::
@@ -16,7 +15,6 @@ defmodule Hammer.Backend do
               | {:error, reason :: any}
 
   @callback count_hit(
-              pid :: pid(),
               key :: bucket_key,
               now :: integer,
               increment :: integer
@@ -24,18 +22,12 @@ defmodule Hammer.Backend do
               {:ok, count :: integer}
               | {:error, reason :: any}
 
-  @callback get_bucket(
-              pid :: pid(),
-              key :: bucket_key
-            ) ::
+  @callback get_bucket(key :: bucket_key) ::
               {:ok, info :: bucket_info}
               | {:ok, nil}
               | {:error, reason :: any}
 
-  @callback delete_buckets(
-              pid :: pid(),
-              id :: String.t()
-            ) ::
+  @callback delete_buckets(id :: String.t()) ::
               {:ok, count_deleted :: integer}
               | {:error, reason :: any}
 end

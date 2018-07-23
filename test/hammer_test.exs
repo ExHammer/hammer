@@ -2,17 +2,15 @@ defmodule HammerTest do
   use ExUnit.Case, async: true
 
   setup _context do
-    pool = Hammer.Utils.pool_name()
+    Application.stop(:hammer)
 
-    opts = [
-      name: {:local, pool},
-      worker_module: Hammer.Backend.ETS,
-      size: 4,
-      max_overflow: 4
-    ]
+    Application.put_env(
+      :hammer,
+      :backend,
+      {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 2, cleanup_interval_ms: 60_000 * 2]}
+    )
 
-    {:ok, _pid} = :poolboy.start_link(opts, [])
-    {:ok, [pool: pool]}
+    {:ok, [app: Application.ensure_all_started(:hammer)]}
   end
 
   test "make_rate_checker" do

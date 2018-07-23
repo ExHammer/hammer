@@ -53,7 +53,7 @@ defmodule Hammer.Mixfile do
     [
       {:poolboy, "~> 1.5"},
       {:ex_doc, "~> 0.16", only: :dev},
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
+      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.5", only: :test}
     ]
   end

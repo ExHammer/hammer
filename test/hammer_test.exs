@@ -1,5 +1,5 @@
 defmodule HammerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   setup _context do
     pool = Hammer.Utils.pool_name()

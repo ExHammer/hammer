@@ -18,11 +18,19 @@ defmodule UtilsTest do
   test "get_backend_module" do
     # With :single and default backend config
     assert Hammer.Utils.get_backend_module(:single) == Hammer.Backend.ETS
+
     # With :single and configured backend config
     Application.put_env(:hammer, :backend, {Hammer.Backend.SomeBackend, []})
     assert Hammer.Utils.get_backend_module(:single) == Hammer.Backend.SomeBackend
+
     # with a specific backend config
     Application.put_env(:hammer, :backend, one: {Hammer.Backend.SomeBackend, []})
     assert Hammer.Utils.get_backend_module(:one) == Hammer.Backend.SomeBackend
+
+    # with an erroneus backend key
+    Application.put_env(:hammer, :backend, one: {Hammer.Backend.SomeBackend, []})
+    assert_raise RuntimeError, fn ->
+      Hammer.Utils.get_backend_module(:no_not_real) == Hammer.Backend.SomeBackend
+    end
   end
 end

@@ -39,7 +39,7 @@ defmodule Hammer.Utils do
         backend_module
 
       _ ->
-        raise KeyError, "backend #{which} is not configured"
+        raise RuntimeError, "backend #{which} is not configured"
     end
   end
 end

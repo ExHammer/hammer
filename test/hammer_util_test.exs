@@ -29,6 +29,7 @@ defmodule UtilsTest do
 
     # with an erroneus backend key
     Application.put_env(:hammer, :backend, one: {Hammer.Backend.SomeBackend, []})
+
     assert_raise RuntimeError, fn ->
       Hammer.Utils.get_backend_module(:no_not_real) == Hammer.Backend.SomeBackend
     end

@@ -12,10 +12,4 @@ env:
 
 script:
   - make test
-  - make dialyzer-ci
   - make coveralls-travis
-
-cache:
-  directories:
-    - ~/.mix
-    - ~/.hex

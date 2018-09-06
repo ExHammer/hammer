@@ -125,12 +125,11 @@ defmodule Hammer.Backend.ETS do
     case :ets.info(ets_table_name) do
       :undefined ->
         :ets.new(ets_table_name, [:named_table, :ordered_set, :public])
+        :timer.send_interval(cleanup_interval_ms, :prune)
 
       _ ->
         nil
     end
-
-    :timer.send_interval(cleanup_interval_ms, :prune)
 
     state = %{
       ets_table_name: ets_table_name,

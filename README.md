@@ -80,7 +80,7 @@ using Hammer in a Phoenix application.
 
 ## Available Backends
 
-- Hammer.Backend.ETS (provided with Hammer)
+- Hammer.Backend.ETS (provided with Hammer for testing and dev purposes, not very good for production use)
 - [Hammer.Backend.Redis](https://github.com/ExHammer/hammer-backend-redis)
 
 ## Getting Help

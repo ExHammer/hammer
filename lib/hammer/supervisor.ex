@@ -33,7 +33,7 @@ defmodule Hammer.Supervisor do
   # Private helpers
   defp to_pool_spec(name, {mod, args}) do
     pool_size = args[:pool_size] || 4
-    pool_max_overflow = args[:pool_max_overflow] || 4
+    pool_max_overflow = args[:pool_max_overflow] || 0
 
     opts = [
       name: {:local, name},

@@ -28,6 +28,9 @@ defmodule Hammer.Utils do
       {backend_module, _config} ->
         backend_module
 
+      nil ->
+        raise RuntimeError, "Hammer :backend not configured"
+
       _ ->
         raise RuntimeError, "trying to get single backend, but multiple backends configured"
     end
@@ -37,6 +40,9 @@ defmodule Hammer.Utils do
     case Application.get_env(:hammer, :backend)[which] do
       {backend_module, _config} ->
         backend_module
+
+      nil ->
+        raise RuntimeError, "Hammer :backend not configured"
 
       _ ->
         raise RuntimeError, "backend #{which} is not configured"

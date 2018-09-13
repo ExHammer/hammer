@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.1.0
+
+### Changed
+
+- Default `:pool_max_overflow` changed to `0`. It's a better default, given
+  that some users have seen weird errors when using a higher overflow.
+  In general, capacity should be increased by using a higher `:pool_size` instead.
+
 
 ## 5.0.0
 

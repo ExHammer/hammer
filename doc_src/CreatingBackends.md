@@ -18,10 +18,11 @@ The expected backend api is as follows:
 
 - `args`: Keyword list of configuration.
 
-The `expiry_ms` and `cleanup_interval_ms` keys are considered essential, as the
-backend process should delete expired buckets somehow. Other keys are for the
-backend developer to choose, but for example, if the backend were using a
-database called `FooDB` to store buckets, then an appropriate key would be
+The `expiry_ms` key is considered essential, as the backend process should
+delete expired buckets somehow. Depending on how the backend implements cleanup,
+the `cleanup_interval_ms` key may be required. Other keys are for the backend
+developer to choose, but for example, if the backend were using a database
+called `FooDB` to store buckets, then an appropriate key would be
 `foodb_config`.
 
 Example:

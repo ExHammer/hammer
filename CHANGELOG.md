@@ -1,12 +1,17 @@
 # Changelog
 
-## 5.1.0
+
+## 6.0.0
 
 ### Changed
 
+- Change the `ETS` backend to throw an error if either `expiry_ms` or
+  `cleanup_interval_ms` config values are missing. This should have been fixed
+  ages ago.
 - Default `:pool_max_overflow` changed to `0`. It's a better default, given
   that some users have seen weird errors when using a higher overflow.
-  In general, capacity should be increased by using a higher `:pool_size` instead.
+  In general, capacity should be increased by using a higher `:pool_size` instead
+- Changed how the ETS backend does cleanups of data, should be more performant.
 
 
 ## 5.0.0

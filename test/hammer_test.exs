@@ -11,7 +11,12 @@ defmodule HammerTest do
       max_overflow: 4
     ]
 
-    {:ok, _pid} = :poolboy.start_link(opts, [])
+    worker_args = [
+      expiry_ms: 5001,
+      cleanup_interval_ms: 6002
+    ]
+
+    {:ok, _pid} = :poolboy.start_link(opts, worker_args)
     {:ok, [pool: pool]}
   end
 

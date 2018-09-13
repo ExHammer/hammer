@@ -36,7 +36,6 @@ defmodule Hammer.Application do
               expiry_ms: 60_000 * 60 * 2,
               cleanup_interval_ms: 60_000 * 2,
               pool_size: 2,
-              pool_max_overflow: 4
             ]
           },
           redis: {

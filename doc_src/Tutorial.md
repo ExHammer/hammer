@@ -74,8 +74,8 @@ it is still counting up hits for its time period.
 The size of the backend worker pool can be tweaked with the `:pool_size` and
 `:pool_max_overflow` options, (which are then supplied to `poolboy`). `:pool_size`
 determines the size of the pool, and `:pool_max_overflow` determines how many extra
-workers can be spawned when the system is under pressure. The default for both is `4`,
-which will be fine for most systems.
+workers can be spawned when the system is under pressure. The default for both is `0`,
+which will be fine for most systems. (Note: we've seen some weird errors sometimes when using a `:pool_max_overflow` higher than zero. Always check how this works for you in production, and consider setting a higher `:pool_size` instead).
 
 Luckily, even if you don't configure `:hammer` at all, the application will
 default to the ETS backend anyway, with some sensible defaults.

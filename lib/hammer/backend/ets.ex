@@ -122,8 +122,12 @@ defmodule Hammer.Backend.ETS do
     cleanup_interval_ms = Keyword.get(args, :cleanup_interval_ms)
     expiry_ms = Keyword.get(args, :expiry_ms)
 
-    if !expiry_ms or !cleanup_interval_ms do
-      raise RuntimeError, "Missing required config: expiry_ms, cleanup_interval_ms"
+    if !expiry_ms do
+      raise RuntimeError, "Missing required config: expiry_ms"
+    end
+
+    if !cleanup_interval_ms do
+      raise RuntimeError, "Missing required config: cleanup_interval_ms"
     end
 
     case :ets.info(ets_table_name) do

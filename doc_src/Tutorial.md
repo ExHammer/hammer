@@ -7,7 +7,7 @@ Add Hammer as a dependency in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:hammer, "~> 5.0"}]
+  [{:hammer, "~> 6.0"}]
 end
 ```
 

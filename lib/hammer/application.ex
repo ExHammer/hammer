@@ -14,11 +14,13 @@ defmodule Hammer.Application do
   options, and with the same effect:
 
   - `:expiry_ms` (int): expiry time in milliseconds, after which a bucket will
-    be deleted. The exact mechanism for cleanup will vary by backend
-  - `:pool_size` (int): size of the backend worker pool
+    be deleted. The exact mechanism for cleanup will vary by backend. This configuration
+    option is mandatory
+  - `:pool_size` (int): size of the backend worker pool (default=2)
   - `:pool_max_overflow` int(): number of extra workers the pool is permitted
     to spawn when under pressure. The worker pool (managed by the poolboy library)
     will automatically create and destroy workers up to the max-overflow limit
+    (default=0)
 
   Example of a single backend:
 
@@ -35,14 +37,14 @@ defmodule Hammer.Application do
               ets_table_name: :hammer_backend_ets_buckets,
               expiry_ms: 60_000 * 60 * 2,
               cleanup_interval_ms: 60_000 * 2,
-              pool_size: 2,
             ]
           },
           redis: {
             Hammer.Backend.Redis,
             [
               expiry_ms: 60_000 * 60 * 2,
-              redix_config: [host: "localhost", port: 6379]
+              redix_config: [host: "localhost", port: 6379],
+              pool_size: 4,
             ]
           }
         ]

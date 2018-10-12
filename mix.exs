@@ -13,7 +13,7 @@ defmodule Hammer.Mixfile do
       ],
       source_url: "https://github.com/ExHammer/hammer",
       homepage_url: "https://github.com/ExHammer/hammer",
-      version: "6.0.0-rc1",
+      version: "6.0.0",
       elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,

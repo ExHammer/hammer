@@ -23,7 +23,7 @@ by adding `hammer` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:hammer, "~> 5.0"}]
+  [{:hammer, "~> 6.0"}]
 end
 ```
 
@@ -66,9 +66,7 @@ Backends are configured via `Mix.Config`:
 ```elixir
 config :hammer,
   backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 4,
-                                 cleanup_interval_ms: 60_000 * 10,
-                                 pool_size: 2,
-                                 pool_max_overflow: 4]}
+                                 cleanup_interval_ms: 60_000 * 10]}
 ```
 
 

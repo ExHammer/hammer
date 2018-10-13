@@ -2,6 +2,9 @@ defmodule Hammer.Backend.ETS do
   @moduledoc """
   An ETS backend for Hammer
 
+  Note: This backend is suitable for development, testing, and small
+  single-node deployments, but should not be used for production workloads.
+
   The public API of this module is used by Hammer to store information about
   rate-limit 'buckets'. A bucket is identified by a `key`, which is a tuple
   `{bucket_number, id}`. The essential schema of a bucket is:

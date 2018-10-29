@@ -164,7 +164,6 @@ defmodule Hammer.Backend.Memory do
       end
     rescue
       e ->
-        IO.puts ">> err, #{e}"
         {:reply, {:error, e}, state}
     end
   end

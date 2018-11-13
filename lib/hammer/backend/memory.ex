@@ -222,7 +222,7 @@ defmodule Hammer.Backend.Memory do
 
       {:noreply, %{state | buckets: filtered_buckets}}
     rescue
-      e ->
+      _e ->
         {:noreply, state}
     end
   end

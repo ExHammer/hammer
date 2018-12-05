@@ -124,6 +124,7 @@ defmodule Hammer.Backend.ETS do
     ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
     cleanup_interval_ms = Keyword.get(args, :cleanup_interval_ms)
     expiry_ms = Keyword.get(args, :expiry_ms)
+    ets_table_type = Keyword.get(args, :ets_table_type, :set)
 
     if !expiry_ms do
       raise RuntimeError, "Missing required config: expiry_ms"
@@ -133,9 +134,13 @@ defmodule Hammer.Backend.ETS do
       raise RuntimeError, "Missing required config: cleanup_interval_ms"
     end
 
+    if ets_table_type not in [:set, :ordered_set] do
+      raise RuntimeError, "Invalid config: ets_table_type '#{ets_table_type}'"
+    end
+
     case :ets.info(ets_table_name) do
       :undefined ->
-        :ets.new(ets_table_name, [:named_table, :ordered_set, :public])
+        :ets.new(ets_table_name, [:named_table, ets_table_type, :public])
         :timer.send_interval(cleanup_interval_ms, :prune)
 
       _ ->

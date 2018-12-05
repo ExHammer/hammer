@@ -20,6 +20,8 @@ defmodule Hammer.Backend.ETS do
   - `expiry_ms`: (integer) time in ms before a bucket is auto-deleted,
     should be larger than the expected largest size/duration of a bucket
   - `cleanup_interval_ms`: (integer) time between cleanup runs,
+  - `ets_table_type`: (atom) type of ETS table, defaults to `:set`, and can be
+    either `:set` or `:ordered_set`
 
   Example:
 

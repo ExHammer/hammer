@@ -2,8 +2,8 @@
 
 Hammer is a rate-limiter for the [Elixir](https://elixir-lang.org/) language.
 It's killer feature is a pluggable backend system, allowing you to use whichever
-storage suits your needs. Currently, backends for ETS and
-[Redis](https://github.com/ExHammer/hammer-backend-redis) are available.
+storage suits your needs. Currently, backends for ETS,
+[Redis](https://github.com/ExHammer/hammer-backend-redis), and [Mnesia](https://github.com/ExHammer/hammer-backend-mnesia) are available.
 
 
 ```elixir

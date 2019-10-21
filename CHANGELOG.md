@@ -1,6 +1,14 @@
 # Changelog
 
 
+## 6.0.1
+
+### Changed
+
+- Fix documentation formatting
+- Improve error handling when checking rate limits
+
+
 ## 6.0.0
 
 ### Changed

@@ -35,6 +35,8 @@ defmodule Hammer.Backend.ETS do
   @type bucket_info ::
           {key :: bucket_key, count :: integer, created :: integer, updated :: integer}
 
+  @ets_table_name :hammer_ets_buckets
+
   use GenServer
   alias Hammer.Utils
 
@@ -121,7 +123,6 @@ defmodule Hammer.Backend.ETS do
   ## GenServer Callbacks
 
   def init(args) do
-    ets_table_name = Keyword.get(args, :ets_table_name, :hammer_ets_buckets)
     cleanup_interval_ms = Keyword.get(args, :cleanup_interval_ms)
     expiry_ms = Keyword.get(args, :expiry_ms)
 
@@ -133,9 +134,9 @@ defmodule Hammer.Backend.ETS do
       raise RuntimeError, "Missing required config: cleanup_interval_ms"
     end
 
-    case :ets.info(ets_table_name) do
+    case :ets.info(@ets_table_name) do
       :undefined ->
-        :ets.new(ets_table_name, [:named_table, :ordered_set, :public])
+        :ets.new(@ets_table_name, [:named_table, :ordered_set, :public])
         :timer.send_interval(cleanup_interval_ms, :prune)
 
       _ ->
@@ -143,7 +144,6 @@ defmodule Hammer.Backend.ETS do
     end
 
     state = %{
-      ets_table_name: ets_table_name,
       cleanup_interval_ms: cleanup_interval_ms,
       expiry_ms: expiry_ms
     }
@@ -156,12 +156,10 @@ defmodule Hammer.Backend.ETS do
   end
 
   def handle_call({:count_hit, key, now, increment}, _from, state) do
-    %{ets_table_name: tn} = state
-
     try do
-      if :ets.member(tn, key) do
+      if :ets.member(@ets_table_name, key) do
         [count, _] =
-          :ets.update_counter(tn, key, [
+          :ets.update_counter(@ets_table_name, key, [
             # Increment count field
             {2, increment},
             # Set updated_at to now
@@ -171,7 +169,7 @@ defmodule Hammer.Backend.ETS do
         {:reply, {:ok, count}, state}
       else
         # Insert {key, count, created_at, updated_at}
-        true = :ets.insert(tn, {key, increment, now, now})
+        true = :ets.insert(@ets_table_name, {key, increment, now, now})
         {:reply, {:ok, increment}, state}
       end
     rescue
@@ -181,11 +179,9 @@ defmodule Hammer.Backend.ETS do
   end
 
   def handle_call({:get_bucket, key}, _from, state) do
-    %{ets_table_name: tn} = state
-
     try do
       result =
-        case :ets.lookup(tn, key) do
+        case :ets.lookup(@ets_table_name, key) do
           [] ->
             {:ok, nil}
 
@@ -201,12 +197,11 @@ defmodule Hammer.Backend.ETS do
   end
 
   def handle_call({:delete_buckets, id}, _from, state) do
-    %{ets_table_name: tn} = state
     # Compiled from:
     #   fun do {{bucket_number, bid},_,_,_} when bid == ^id -> true end
     try do
       count_deleted =
-        :ets.select_delete(tn, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}])
+        :ets.select_delete(@ets_table_name, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}])
 
       {:reply, {:ok, count_deleted}, state}
     rescue
@@ -216,11 +211,11 @@ defmodule Hammer.Backend.ETS do
   end
 
   def handle_info(:prune, state) do
-    %{expiry_ms: expiry_ms, ets_table_name: tn} = state
+    %{expiry_ms: expiry_ms} = state
     now = Utils.timestamp()
     expire_before = now - expiry_ms
 
-    :ets.select_delete(tn, [
+    :ets.select_delete(@ets_table_name, [
       {{:_, :_, :_, :"$1"}, [{:<, :"$1", expire_before}], [true]}
     ])
 

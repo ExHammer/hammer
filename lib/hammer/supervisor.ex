@@ -30,6 +30,10 @@ defmodule Hammer.Supervisor do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
+  defp to_pool_spec(name, {m, f, a}) when is_list(a) do
+    to_pool_spec(name, apply(m, f, a))
+  end
+
   # Private helpers
   defp to_pool_spec(name, {mod, args}) do
     pool_size = args[:pool_size] || 4

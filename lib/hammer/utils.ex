@@ -25,6 +25,9 @@ defmodule Hammer.Utils do
 
   def get_backend_module(:single) do
     case Application.get_env(:hammer, :backend) do
+      {m, f, a} ->
+        apply(m, f, a) |> elem(0)
+
       {backend_module, _config} ->
         backend_module
 
@@ -38,6 +41,9 @@ defmodule Hammer.Utils do
 
   def get_backend_module(which) do
     case Application.get_env(:hammer, :backend)[which] do
+      {m, f, a} ->
+        apply(m, f, a) |> elem(0)
+
       {backend_module, _config} ->
         backend_module
 

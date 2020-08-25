@@ -69,6 +69,18 @@ config :hammer,
                                  cleanup_interval_ms: 60_000 * 10]}
 ```
 
+You can specify runtime config via an mfa function
+
+config :hammer,
+  backend: {MyApp.Hammer, :config, []}
+
+defmodule MyApp.Hammer do
+  def config() do
+    {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 4,
+                          cleanup_interval_ms: 60_000 * 10]}
+  end
+end
+
 
 See the [Tutorial](https://hexdocs.pm/hammer/tutorial.html) for more.
 

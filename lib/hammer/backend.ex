@@ -1,6 +1,6 @@
 defmodule Hammer.Backend do
   @moduledoc """
-  The backend Behaviour module
+  The backend Behaviour module.
   """
 
   @type bucket_key :: {bucket :: integer, id :: String.t()}

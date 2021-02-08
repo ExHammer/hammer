@@ -1,6 +1,6 @@
 defmodule Hammer.Backend.ETS do
   @moduledoc """
-  An ETS backend for Hammer
+  An ETS backend for Hammer.
 
   Note: This backend is suitable for development, testing, and small
   single-node deployments, but should not be used for production workloads.

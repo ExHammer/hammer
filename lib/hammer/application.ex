@@ -1,6 +1,7 @@
 defmodule Hammer.Application do
   @moduledoc """
   Hammer application, responsible for starting the backend worker pools.
+
   Configured with the `:hammer` environment key:
 
   - `:backend`, Either a tuple of `{module, config}`, or a keyword-list

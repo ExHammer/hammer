@@ -43,7 +43,7 @@ defmodule Hammer do
           | {:deny, limit :: integer}
           | {:error, reason :: any}
   @doc """
-  Same as check_rate/3, but allows specifying a backend
+  Same as `check_rate/3`, but allows specifying a backend.
   """
   def check_rate(backend, id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)

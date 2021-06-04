@@ -27,7 +27,7 @@ defmodule Hammer do
   Example:
 
       user_id = 42076
-      case  check_rate("file_upload:\#{user_id}", 60_000, 5) do
+      case check_rate("file_upload:\#{user_id}", 60_000, 5) do
         {:allow, _count} ->
           # do the file upload
         {:deny, _limit} ->

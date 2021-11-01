@@ -3,10 +3,9 @@
 use Mix.Config
 
 config :hammer,
-  backend: {Hammer.Backend.ETS,
-            [ets_table_name: :hammer_backend_ets_buckets,
-             expiry_ms: 60_000 * 60 * 2,
-             cleanup_interval_ms: 60_000 * 2]}
+  backend: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
+                                   redix_config: [host: "localhost",
+                                                  port: 6379]]}
 
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this

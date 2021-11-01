@@ -17,7 +17,7 @@ defmodule UtilsTest do
 
   test "get_backend_module" do
     # With :single and default backend config
-    assert Hammer.Utils.get_backend_module(:single) == Hammer.Backend.ETS
+    assert Hammer.Utils.get_backend_module(:single) == Hammer.Backend.Redis
 
     # With :single and configured backend config
     Application.put_env(:hammer, :backend, {Hammer.Backend.SomeBackend, []})

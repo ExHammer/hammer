@@ -55,12 +55,11 @@ The `Hammer` module provides the following functions:
 - `inspect_bucket(id, scale_ms, limit)`
 - `delete_buckets(id)`
 
-The Redis backend is configured via `Mix.Config`:
+The Redis backend is configured via `Mix.Config` using a Redis URL:
 
 ```elixir
 config :hammer,
-  backend: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 4,
-                                 cleanup_interval_ms: 60_000 * 10]}
+  redis_url: "redis://localhost:6379/1?expiry_ms=7200000&pool_size=4&pool_max_overflow=0"
 ```
 
 

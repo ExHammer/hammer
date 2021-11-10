@@ -22,15 +22,36 @@ defmodule Hammer.Supervisor do
   end
 
   # Private helpers
-  defp to_pool_spec(name, {mod, args}) do
-    pool_size = args[:pool_size] || 4
-    pool_max_overflow = args[:pool_max_overflow] || 0
+  defp parse_redis_url(redis_url) do
+    uri = redis_url
+          |> URI.parse
+          |> Map.from_struct
+
+    Map.merge(uri, %{ decoded_query: URI.decode_query(uri.query) })
+    |> Map.take([:decoded_query, :host, :port])
+  end
+
+  defp to_pool_spec(name, redis_url) do
+    %{
+      decoded_query: decoded_query,
+      host: host,
+      port: port,
+    } = parse_redis_url(redis_url)
+
+    pool_size = decoded_query["pool_size"] || 4
+    pool_max_overflow = decoded_query["pool_max_overflow"] || 0
+    expiry_ms = decoded_query["expiry_ms"] && String.to_integer(decoded_query["expiry_ms"]) || 60_000 * 60 * 2
 
     opts = [
       name: {:local, name},
-      worker_module: mod,
+      worker_module: Hammer.Backend.Redis,
       size: pool_size,
       max_overflow: pool_max_overflow
+    ]
+
+    args = [
+      expiry_ms: decoded_query["expiry_ms"],
+      redix_config: [host: host, port: port]
     ]
 
     :poolboy.child_spec(name, opts, args)

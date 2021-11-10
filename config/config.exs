@@ -3,9 +3,7 @@
 use Mix.Config
 
 config :hammer,
-  backend: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
-                                   redix_config: [host: "localhost",
-                                                  port: 6379]]}
+  redis_url: "redis://localhost:6379/1?expiry_ms=7200000&pool_size=4&pool_max_overflow=0"
 
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this

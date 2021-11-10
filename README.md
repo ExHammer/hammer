@@ -2,33 +2,27 @@
 
 # Hammer
 
-A rate-limiter for Elixir, with pluggable storage backends.
-
-[![Build Status](https://travis-ci.org/ExHammer/hammer.svg?branch=master)](https://travis-ci.org/ExHammer/hammer)
-
-[![Coverage Status](https://coveralls.io/repos/github/ExHammer/hammer/badge.svg?branch=master)](https://coveralls.io/github/ExHammer/hammer?branch=master)
-
-
-## New! Hammer-Plug
-
-We've just released a new helper-library to make adding rate-limiting to your Phoenix
-(or other plug-based) application even easier: [Hammer.Plug](https://github.com/ExHammer/hammer-plug).
-
+A fork of [ExHammer/hammer](https://github.com/ExHammer/hammer) altered to
+focus purely on using a Redis backend.
 
 
 ## Installation
 
-Hammer is [available in Hex](https://hex.pm/packages/hammer), the package can be installed
-by adding `hammer` to your list of dependencies in `mix.exs`:
+This fork of Hammer is currently only available on github.
+The package can be installed by adding `hammer` to your list of dependencies
+along with the github url in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:hammer, "~> 6.0"}]
+  [{:hammer, github: "turnhub/hammer"}]
 end
 ```
 
 
 ## Documentation
+
+The core API of Hammer remains unchanged, so the official documentation can be
+referenced for most functions.
 
 On hexdocs: [https://hexdocs.pm/hammer/frontpage.html](https://hexdocs.pm/hammer/frontpage.html)
 
@@ -61,32 +55,15 @@ The `Hammer` module provides the following functions:
 - `inspect_bucket(id, scale_ms, limit)`
 - `delete_buckets(id)`
 
-Backends are configured via `Mix.Config`:
+The Redis backend is configured via `Mix.Config`:
 
 ```elixir
 config :hammer,
-  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 4,
+  backend: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 4,
                                  cleanup_interval_ms: 60_000 * 10]}
 ```
 
 
-See the [Tutorial](https://hexdocs.pm/hammer/tutorial.html) for more.
-
-See the [Hammer Testbed](https://github.com/ExHammer/hammer-testbed) app for an example of
-using Hammer in a Phoenix application.
-
-
-## Available Backends
-
-- Hammer.Backend.ETS (provided with Hammer for testing and dev purposes, not very good for production use)
-- [Hammer.Backend.Redis](https://github.com/ExHammer/hammer-backend-redis)
-- [Hammer.Backend.Mnesia](https://github.com/ExHammer/hammer-backend-mnesia) (beta)
-
 ## Getting Help
 
-If you're having trouble, either open an issue on this repo, or reach out to the maintainers ([@shanekilkelly](https://twitter.com/shanekilkelly)) on Twitter.
-
-
-## Acknowledgements
-
-Hammer was inspired by the [ExRated](https://github.com/grempe/ex_rated) library, by [grempe](https://github.com/grempe).
+If you're having trouble, open an issue on this repo

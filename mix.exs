@@ -54,7 +54,7 @@ defmodule Hammer.Mixfile do
       {:redix, "~> 1.1.4"},
       {:mock, "~> 0.3.7"},
       {:poolboy, "~> 1.5"},
-      {:ex_doc, "~> 0.16", only: :dev},
+      {:ex_doc, "~> 0.24", only: :dev, runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.5", only: :test}
     ]

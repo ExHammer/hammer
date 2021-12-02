@@ -29,7 +29,7 @@ defmodule Hammer.Application do
     config =
       Application.get_env(
         :hammer,
-        :backend,
+        :redis_url,
         {Hammer.Backend.Redis, []}
       )
 

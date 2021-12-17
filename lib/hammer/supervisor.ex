@@ -50,7 +50,7 @@ defmodule Hammer.Supervisor do
     ]
 
     args = [
-      expiry_ms: decoded_query["expiry_ms"],
+      expiry_ms: expiry_ms,
       redix_config: [host: host, port: port]
     ]
 

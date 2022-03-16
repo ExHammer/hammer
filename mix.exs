@@ -52,9 +52,9 @@ defmodule Hammer.Mixfile do
   defp deps do
     [
       {:poolboy, "~> 1.5"},
-      {:ex_doc, "~> 0.16", only: :dev},
-      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
-      {:excoveralls, "~> 0.5", only: :test}
+      {:ex_doc, "~> 0.28", only: :dev},
+      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:excoveralls, "~> 0.14", only: :test}
     ]
   end
 end

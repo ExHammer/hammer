@@ -5,7 +5,7 @@ defmodule HammerTest do
     pool = Hammer.Utils.pool_name()
 
     opts = [
-      name: {:local, pool},
+      name: {:local, :toto},
       worker_module: Hammer.Backend.ETS,
       size: 4,
       max_overflow: 4
@@ -16,8 +16,31 @@ defmodule HammerTest do
       cleanup_interval_ms: 6002
     ]
 
-    {:ok, _pid} = :poolboy.start_link(opts, worker_args)
+    child_spec =
+      {:local, pool}
+      |> :poolboy.child_spec(opts, worker_args)
+      |> tuple_spec_to_map_spec()
+
+    IO.inspect(child_spec)
+    {:ok, _pid} = start_supervised(child_spec)
+    # {:ok, _pid} = start_supervised(:poolboy.start_link(opts, worker_args))
     {:ok, [pool: pool]}
+  end
+
+  # Poolboy returns an old tuple-based child spec
+  # Supervisor empirically works with it, but child specs should be maps
+  # Poolboy has child_spec/4 to return maps, but it has not yet been published
+  # https://github.com/devinus/poolboy/blob/master/src/poolboy.erl#L109
+  @spec tuple_spec_to_map_spec(:supervisor.child_spec()) :: Supervisor.child_spec()
+  defp tuple_spec_to_map_spec({id, start, restart, shutdown, type, modules}) do
+    %{
+      id: id,
+      start: start,
+      restart: restart,
+      shutdown: shutdown,
+      type: type,
+      modules: modules
+    }
   end
 
   test "make_rate_checker" do

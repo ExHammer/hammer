@@ -1,6 +1,7 @@
 defmodule Hammer.Supervisor do
   @moduledoc """
   Top-level Supervisor for the Hammer application.
+
   Starts a set of poolboy pools based on provided configuration,
   which are latter called to by the `Hammer` module.
   See the Application module for configuration examples.

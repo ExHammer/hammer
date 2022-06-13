@@ -28,7 +28,7 @@ by adding `:hammer` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:hammer, "~> 6.0"}
+    {:hammer, "~> 6.1"}
   ]
 end
 ```

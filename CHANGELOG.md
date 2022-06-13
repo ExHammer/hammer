@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.1.0 - 2022-06-13
+
+### Changed
+
+- Updgrade dependency packages
+- Merged https://github.com/ExHammer/hammer/pull/41 resulting in ETC without GenServer (and therefore better performance)
+- Merged https://github.com/ExHammer/hammer/pull/46 remove additional whitespace
+- Updated Docs based on https://github.com/ExHammer/hammer/pull/45
+- Adds CREDITS.md
 
 ## 6.0.0 - 2018-10-12
 

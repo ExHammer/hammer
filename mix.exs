@@ -2,14 +2,14 @@ defmodule Hammer.Mixfile do
   use Mix.Project
 
   @source_url "https://github.com/ExHammer/hammer"
-  @version "6.0.0"
+  @version "6.1.0"
 
   def project do
     [
       app: :hammer,
       description: "A rate-limiter with plugable backends.",
       package: package(),
-      version: "6.0.0",
+      version: @version,
       elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,

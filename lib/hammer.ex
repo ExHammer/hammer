@@ -258,7 +258,6 @@ defmodule Hammer do
     :poolboy.transaction(
       pool,
       fn pid -> apply(backend, function, [pid | args]) end,
-      # TODO: make timeout configurable
       60_000
     )
   end

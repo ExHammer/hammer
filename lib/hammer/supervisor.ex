@@ -25,8 +25,11 @@ defmodule Hammer.Supervisor do
   # Multiple backends
   def init(config) when is_list(config) do
     children =
-      config
-      |> Enum.map(fn {k, c} -> to_pool_spec(:"hammer_backend_#{k}_pool", c) end)
+      Enum.map(config, fn {k, c} ->
+        "hammer_backend_#{k}_pool"
+        |> String.to_existing_atom()
+        |> to_pool_spec(c)
+      end)
 
     Supervisor.init(children, strategy: :one_for_one)
   end

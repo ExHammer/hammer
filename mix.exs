@@ -8,20 +8,14 @@ defmodule Hammer.Mixfile do
     [
       app: :hammer,
       description: "A rate-limiter with plugable backends.",
-      package: package(),
       version: @version,
       elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),
-      test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        coveralls: :test,
-        "coveralls.detail": :test,
-        "coveralls.post": :test,
-        "coveralls.html": :test
-      ]
+      package: package(),
+      test_coverage: [summary: [threshold: 70]]
     ]
   end
 
@@ -30,21 +24,12 @@ defmodule Hammer.Mixfile do
     [mod: {Hammer.Application, []}, extra_applications: [:logger, :runtime_tools]]
   end
 
-  defp package do
-    [
-      name: :hammer,
-      maintainers: ["Shane Kilkelly (shane@kilkelly.me)"],
-      licenses: ["MIT"],
-      links: %{"GitHub" => @source_url}
-    ]
-  end
-
   defp deps do
     [
-      {:poolboy, "~> 1.5"},
+      {:credo, "~> 1.6", only: [:dev, :test]},
       {:ex_doc, "~> 0.28", only: :dev},
       {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:excoveralls, "~> 0.14", only: :test}
+      {:poolboy, "~> 1.5"}
     ]
   end
 
@@ -63,6 +48,18 @@ defmodule Hammer.Mixfile do
       source_ref: "v#{@version}",
       homepage_url: @source_url,
       assets: "assets"
+    ]
+  end
+
+  defp package do
+    [
+      name: :hammer,
+      maintainers: ["Emmanuel Pinault", "Shane Kilkelly (shane@kilkelly.me)"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/master/CHANGELOG.md"
+      }
     ]
   end
 end

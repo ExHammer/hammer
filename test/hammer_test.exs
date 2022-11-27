@@ -21,7 +21,6 @@ defmodule HammerTest do
       |> :poolboy.child_spec(opts, worker_args)
       |> tuple_spec_to_map_spec()
 
-    IO.inspect(child_spec)
     {:ok, _pid} = start_supervised(child_spec)
     # {:ok, _pid} = start_supervised(:poolboy.start_link(opts, worker_args))
     {:ok, [pool: pool]}
@@ -44,7 +43,7 @@ defmodule HammerTest do
   end
 
   test "make_rate_checker" do
-    check = Hammer.make_rate_checker("some-prefix:", 10000, 2)
+    check = Hammer.make_rate_checker("some-prefix:", 10_000, 2)
     assert {:allow, 1} = check.("aaa")
     assert {:allow, 2} = check.("aaa")
     assert {:deny, 2} = check.("aaa")

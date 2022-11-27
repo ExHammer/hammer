@@ -27,14 +27,14 @@ defmodule Hammer.Backend.ETS do
 
   @behaviour Hammer.Backend
 
+  use GenServer
+  alias Hammer.Utils
+
   @type bucket_key :: {bucket :: integer, id :: String.t()}
   @type bucket_info ::
           {key :: bucket_key, count :: integer, created :: integer, updated :: integer}
 
   @ets_table_name :hammer_ets_buckets
-
-  use GenServer
-  alias Hammer.Utils
 
   ## Public API
 
@@ -86,26 +86,24 @@ defmodule Hammer.Backend.ETS do
           {:ok, count :: integer}
           | {:error, reason :: any}
   def count_hit(_pid, key, now, increment) do
-    try do
-      if :ets.member(@ets_table_name, key) do
-        [count, _] =
-          :ets.update_counter(@ets_table_name, key, [
-            # Increment count field
-            {2, increment},
-            # Set updated_at to now
-            {4, 1, 0, now}
-          ])
+    if :ets.member(@ets_table_name, key) do
+      [count, _] =
+        :ets.update_counter(@ets_table_name, key, [
+          # Increment count field
+          {2, increment},
+          # Set updated_at to now
+          {4, 1, 0, now}
+        ])
 
-        {:ok, count}
-      else
-        # Insert {key, count, created_at, updated_at}
-        true = :ets.insert(@ets_table_name, {key, increment, now, now})
-        {:ok, increment}
-      end
-    rescue
-      e ->
-        {:error, e}
+      {:ok, count}
+    else
+      # Insert {key, count, created_at, updated_at}
+      true = :ets.insert(@ets_table_name, {key, increment, now, now})
+      {:ok, increment}
     end
+  rescue
+    e ->
+      {:error, e}
   end
 
   @doc """
@@ -119,21 +117,19 @@ defmodule Hammer.Backend.ETS do
           | {:ok, nil}
           | {:error, reason :: any}
   def get_bucket(_pid, key) do
-    try do
-      result =
-        case :ets.lookup(@ets_table_name, key) do
-          [] ->
-            {:ok, nil}
+    result =
+      case :ets.lookup(@ets_table_name, key) do
+        [] ->
+          {:ok, nil}
 
-          [bucket] ->
-            {:ok, bucket}
-        end
+        [bucket] ->
+          {:ok, bucket}
+      end
 
-      result
-    rescue
-      e ->
-        {:error, e}
-    end
+    result
+  rescue
+    e ->
+      {:error, e}
   end
 
   @doc """
@@ -148,15 +144,15 @@ defmodule Hammer.Backend.ETS do
   def delete_buckets(_pid, id) do
     # Compiled from:
     #   fun do {{bucket_number, bid},_,_,_} when bid == ^id -> true end
-    try do
-      count_deleted =
-        :ets.select_delete(@ets_table_name, [{{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}])
+    count_deleted =
+      :ets.select_delete(@ets_table_name, [
+        {{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}
+      ])
 
-      {:ok, count_deleted}
-    rescue
-      e ->
-        {:error, e}
-    end
+    {:ok, count_deleted}
+  rescue
+    e ->
+      {:error, e}
   end
 
   ## GenServer Callbacks

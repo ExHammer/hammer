@@ -259,7 +259,7 @@ defmodule Hammer do
       pool,
       fn pid -> apply(backend, function, [pid | args]) end,
       # TODO: make timeout configurable
-      60000
+      60_000
     )
   end
 end

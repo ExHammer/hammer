@@ -54,7 +54,7 @@ defmodule Hammer.Mixfile do
   defp package do
     [
       name: :hammer,
-      maintainers: ["Emmanuel Pinault", "Shane Kilkelly (shane@kilkelly.me)"],
+      maintainers: ["Emmanuel Pinault", "June Kelly (june@junek.xyz)"],
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url,

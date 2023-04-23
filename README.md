@@ -86,6 +86,6 @@ Hammer was inspired by the [ExRated](https://github.com/grempe/ex_rated) library
 
 ## License
 
-Copyright (c) 2017 Shane Kilkelly
+Copyright (c) 2023 June Kelly
 
 This library is MIT licensed. See the [LICENSE](https://github.com/ExHammer/hammer/blob/master/LICENSE.md) for details.

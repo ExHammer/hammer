@@ -6,12 +6,12 @@ defmodule Hammer.Utils do
   end
 
   def pool_name(name) do
-    :"hammer_backend_#{name}_pool"
+    String.to_existing_atom("hammer_backend_#{name}_pool")
   end
 
   # Returns Erlang Time as milliseconds since 00:00 GMT, January 1, 1970
   def timestamp do
-    DateTime.utc_now() |> DateTime.to_unix(:millisecond)
+    DateTime.to_unix(DateTime.utc_now(), :millisecond)
   end
 
   # Returns tuple of {timestamp, key}, where key is {bucket_number, id}

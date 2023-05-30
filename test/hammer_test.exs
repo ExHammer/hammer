@@ -5,7 +5,7 @@ defmodule HammerTest do
     pool = Hammer.Utils.pool_name()
 
     opts = [
-      name: {:local, pool},
+      name: {:local, :toto},
       worker_module: Hammer.Backend.ETS,
       size: 4,
       max_overflow: 4
@@ -16,12 +16,33 @@ defmodule HammerTest do
       cleanup_interval_ms: 6002
     ]
 
-    {:ok, _pid} = :poolboy.start_link(opts, worker_args)
-    {:ok, [pool: pool]}
+    child_spec =
+      {:local, pool}
+      |> :poolboy.child_spec(opts, worker_args)
+      |> tuple_spec_to_map_spec()
+
+    {:ok, _pid} = start_supervised(child_spec)
+    {:ok, [pool: pool, bucket: "bucket_#{:rand.uniform()}"]}
+  end
+
+  # Poolboy returns an old tuple-based child spec
+  # Supervisor empirically works with it, but child specs should be maps
+  # Poolboy has child_spec/4 to return maps, but it has not yet been published
+  # https://github.com/devinus/poolboy/blob/master/src/poolboy.erl#L109
+  @spec tuple_spec_to_map_spec(:supervisor.child_spec()) :: Supervisor.child_spec()
+  defp tuple_spec_to_map_spec({id, start, restart, shutdown, type, modules}) do
+    %{
+      id: id,
+      start: start,
+      restart: restart,
+      shutdown: shutdown,
+      type: type,
+      modules: modules
+    }
   end
 
   test "make_rate_checker" do
-    check = Hammer.make_rate_checker("some-prefix:", 10000, 2)
+    check = Hammer.make_rate_checker("some-prefix:", 10_000, 2)
     assert {:allow, 1} = check.("aaa")
     assert {:allow, 2} = check.("aaa")
     assert {:deny, 2} = check.("aaa")
@@ -32,43 +53,48 @@ defmodule HammerTest do
     assert {:deny, 2} = check.("bbb")
   end
 
-  test "returns {:ok, 1} tuple on first access" do
-    assert {:allow, 1} = Hammer.check_rate("my-bucket", 10_000, 10)
+  test "returns {:ok, 1} tuple on first access", %{bucket: bucket} do
+    assert {:allow, 1} = Hammer.check_rate(bucket, 10_000, 10)
   end
 
-  test "returns {:ok, 4} tuple on in-limit checks" do
-    assert {:allow, 1} = Hammer.check_rate("my-bucket", 10_000, 10)
-    assert {:allow, 2} = Hammer.check_rate("my-bucket", 10_000, 10)
-    assert {:allow, 3} = Hammer.check_rate("my-bucket", 10_000, 10)
-    assert {:allow, 4} = Hammer.check_rate("my-bucket", 10_000, 10)
+  test "returns {:ok, 4} tuple on in-limit checks", %{bucket: bucket} do
+    assert {:allow, 1} = Hammer.check_rate(bucket, 10_000, 10)
+    assert {:allow, 2} = Hammer.check_rate(bucket, 10_000, 10)
+    assert {:allow, 3} = Hammer.check_rate(bucket, 10_000, 10)
+    assert {:allow, 4} = Hammer.check_rate(bucket, 10_000, 10)
   end
 
-  test "returns expected tuples on mix of in-limit and out-of-limit checks" do
-    assert {:allow, 1} = Hammer.check_rate("my-bucket", 10_000, 2)
-    assert {:allow, 2} = Hammer.check_rate("my-bucket", 10_000, 2)
-    assert {:deny, 2} = Hammer.check_rate("my-bucket", 10_000, 2)
-    assert {:deny, 2} = Hammer.check_rate("my-bucket", 10_000, 2)
+  test "returns expected tuples on mix of in-limit and out-of-limit checks", %{bucket: bucket} do
+    assert {:allow, 1} = Hammer.check_rate(bucket, 10_000, 2)
+    assert {:allow, 2} = Hammer.check_rate(bucket, 10_000, 2)
+    assert {:deny, 2} = Hammer.check_rate(bucket, 10_000, 2)
+    assert {:deny, 2} = Hammer.check_rate(bucket, 10_000, 2)
   end
 
-  test "returns expected tuples on 1000ms bucket check with a sleep in the middle" do
-    assert {:allow, 1} = Hammer.check_rate("my-bucket", 1000, 2)
-    assert {:allow, 2} = Hammer.check_rate("my-bucket", 1000, 2)
-    assert {:deny, 2} = Hammer.check_rate("my-bucket", 1000, 2)
+  test "returns expected tuples on 1000ms bucket check with a sleep in the middle", %{
+    bucket: bucket
+  } do
+    assert {:allow, 1} = Hammer.check_rate(bucket, 1000, 2)
+    assert {:allow, 2} = Hammer.check_rate(bucket, 1000, 2)
+    assert {:deny, 2} = Hammer.check_rate(bucket, 1000, 2)
     :timer.sleep(1001)
-    assert {:allow, 1} = Hammer.check_rate("my-bucket", 1000, 2)
-    assert {:allow, 2} = Hammer.check_rate("my-bucket", 1000, 2)
-    assert {:deny, 2} = Hammer.check_rate("my-bucket", 1000, 2)
+    assert {:allow, 1} = Hammer.check_rate(bucket, 1000, 2)
+    assert {:allow, 2} = Hammer.check_rate(bucket, 1000, 2)
+    assert {:deny, 2} = Hammer.check_rate(bucket, 1000, 2)
   end
 
   test "returns expected tuples on inspect_bucket" do
-    assert {:ok, {0, 2, _, nil, nil}} = Hammer.inspect_bucket("my-bucket1", 1000, 2)
-    assert {:allow, 1} = Hammer.check_rate("my-bucket1", 1000, 2)
-    assert {:ok, {1, 1, _, _, _}} = Hammer.inspect_bucket("my-bucket1", 1000, 2)
-    assert {:allow, 2} = Hammer.check_rate("my-bucket1", 1000, 2)
-    assert {:allow, 1} = Hammer.check_rate("my-bucket2", 1000, 2)
-    assert {:ok, {2, 0, _, _, _}} = Hammer.inspect_bucket("my-bucket1", 1000, 2)
-    assert {:deny, 2} = Hammer.check_rate("my-bucket1", 1000, 2)
-    assert {:ok, {3, 0, ms_to_next_bucket, _, _}} = Hammer.inspect_bucket("my-bucket1", 1000, 2)
+    assert {:ok, {0, 2, _, nil, nil}} = Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
+    assert {:allow, 1} = Hammer.check_rate("inspect_bucket11", 1000, 2)
+    assert {:ok, {1, 1, _, _, _}} = Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
+    assert {:allow, 2} = Hammer.check_rate("inspect_bucket11", 1000, 2)
+    assert {:allow, 1} = Hammer.check_rate("inspect_bucket22", 1000, 2)
+    assert {:ok, {2, 0, _, _, _}} = Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
+    assert {:deny, 2} = Hammer.check_rate("inspect_bucket11", 1000, 2)
+
+    assert {:ok, {3, 0, ms_to_next_bucket, _, _}} =
+             Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
+
     assert ms_to_next_bucket < 1000
   end
 

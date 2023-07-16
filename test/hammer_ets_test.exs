@@ -4,9 +4,19 @@ defmodule ETSTest do
   alias Hammer.Backend.ETS
   alias Hammer.Utils
 
+  @table_name :hammer_ets_buckets
+
   setup _context do
-    opts = [expiry_ms: 5, cleanup_interval_ms: 2, ets_table_name: :test_hammer_table]
-    {:ok, hammer_ets_pid} = ETS.start_link(opts)
+    case :ets.info(@table_name) do
+      :undefined ->
+        nil
+
+      _ ->
+        :ets.delete(@table_name)
+    end
+
+    opts = [expiry_ms: 5, cleanup_interval_ms: 5]
+    {:ok, hammer_ets_pid} = start_supervised({ETS, opts})
     {:ok, Keyword.put(opts, :pid, hammer_ets_pid)}
   end
 
@@ -46,9 +56,9 @@ defmodule ETSTest do
   test "timeout pruning", context do
     pid = context[:pid]
     expiry_ms = context[:expiry_ms]
-    {stamp, key} = Utils.stamp_key("one", 200_000)
+    {stamp, key} = Utils.stamp_key("something-pruned", 200_000)
     assert {:ok, 1} = ETS.count_hit(pid, key, stamp)
-    assert {:ok, {{_, "one"}, 1, _, _}} = ETS.get_bucket(pid, key)
+    assert {:ok, {{_, "something-pruned"}, 1, _, _}} = ETS.get_bucket(pid, key)
     :timer.sleep(expiry_ms * 2)
     assert {:ok, nil} = ETS.get_bucket(pid, key)
   end

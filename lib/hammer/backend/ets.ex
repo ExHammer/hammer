@@ -178,7 +178,7 @@ defmodule Hammer.Backend.ETS do
 
     case :ets.info(@ets_table_name) do
       :undefined ->
-        :ets.new(ets_table_name, [:named_table, ets_table_type, :public])
+        :ets.new(@ets_table_name, [:named_table, ets_table_type, :public])
         :timer.send_interval(cleanup_interval_ms, :prune)
 
       _ ->

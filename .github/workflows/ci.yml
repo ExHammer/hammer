@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    env:
+      MIX_ENV: test
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-20.04]
+        elixir_version: [1.12.3, 1.13.3, 1.14.1]
+        otp_version: [24, 25]
+        exclude:
+          - otp_version: 25
+            elixir_version: 1.12.3
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp_version}}
+          elixir-version: ${{matrix.elixir_version}}
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ matrix.otp_version }}-${{ matrix.elixir_version }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ matrix.otp_version }}-${{ matrix.elixir_version }}
+
+      - run: mix deps.get
+
+      - run: mix format --check-formatted
+
+      - run: mix deps.unlock --check-unused
+
+      - run: mix deps.compile
+
+      - run: mix compile --warnings-as-errors
+
+      - run: mix credo --strict --format=oneline
+
+      - run: mix test --warnings-as-errors --cover

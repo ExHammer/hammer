@@ -1,7 +1,16 @@
 # Changelog
 
+## 6.1.0 - 2022-06-13
 
-## 6.0.0
+### Changed
+
+- Updgrade dependency packages
+- Merged https://github.com/ExHammer/hammer/pull/41 resulting in ETC without GenServer (and therefore better performance)
+- Merged https://github.com/ExHammer/hammer/pull/46 remove additional whitespace
+- Updated Docs based on https://github.com/ExHammer/hammer/pull/45
+- Adds CREDITS.md
+
+## 6.0.0 - 2018-10-12
 
 ### Changed
 
@@ -14,7 +23,7 @@
 - Changed how the ETS backend does cleanups of data, should be more performant.
 
 
-## 5.0.0
+## 5.0.0 - 2018-05-18
 
 ### Added
 
@@ -23,15 +32,15 @@
   APIs which have some notion of "cost" per call.
 
 
-## 4.0.0
+## 4.0.0 - 2018-04-23
 
-## Changed
+### Changed
 
 - Use a worker-pool for the backend (via poolboy),
   this avoids bottle-necking all traffic through a single hammer
   process, thus improving throughput for the system overall
 
-## Added
+### Added
 
 - New configuration options for backends:
   - `:pool_size`, determines the number of workers in the pool (default 4)
@@ -41,7 +50,7 @@
   fifteen Redis's, whatever you want
 
 
-## 3.0.0
+## 3.0.0 - 2018-02-20
 
 ### Changed
 
@@ -49,7 +58,7 @@
 - Use a more sane supervision tree structure
 
 
-## 2.1.0
+## 2.1.0 2017-11-25
 
 ### Changed
 
@@ -57,7 +66,7 @@
 - Add option to suppress all logging
 
 
-## 2.0.0
+## 2.0.0 - 2017-09-24
 
 ### Changed
 
@@ -67,13 +76,13 @@
 - Hammer is now an OTP application, configured via `Mix.Config`
 
 
-## 1.0.0
+## 1.0.0 - 2017-08-22
 
 ### Added
 - Formalise backend API in `Hammer.Backend` behaviour
 
 
-## 0.2.1
+## 0.2.1 - 2017-08-10
 
 ### Changed
 

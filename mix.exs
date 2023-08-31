@@ -1,60 +1,65 @@
 defmodule Hammer.Mixfile do
   use Mix.Project
 
+  @source_url "https://github.com/ExHammer/hammer"
+  @version "6.1.0"
+
   def project do
     [
       app: :hammer,
       description: "A rate-limiter with plugable backends.",
-      package: [
-        name: :hammer,
-        maintainers: ["Shane Kilkelly (shane@kilkelly.me)"],
-        licenses: ["MIT"],
-        links: %{"GitHub" => "https://github.com/ExHammer/hammer"}
-      ],
-      source_url: "https://github.com/ExHammer/hammer",
-      homepage_url: "https://github.com/ExHammer/hammer",
-      version: "6.0.0",
+      version: @version,
       elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      docs: [
-        main: "frontpage",
-        extras: ["doc_src/Frontpage.md", "doc_src/Tutorial.md", "doc_src/CreatingBackends.md"]
-      ],
-      test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        coveralls: :test,
-        "coveralls.detail": :test,
-        "coveralls.post": :test,
-        "coveralls.html": :test
-      ]
+      docs: docs(),
+      package: package(),
+      test_coverage: [summary: [threshold: 70]]
     ]
   end
 
-  # Configuration for the OTP application
-  #
-  # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [mod: {Hammer.Application, []}, extra_applications: [:logger, :runtime_tools]]
   end
 
-  # Dependencies can be Hex packages:
-  #
-  #   {:my_dep, "~> 0.3.0"}
-  #
-  # Or git/path repositories:
-  #
-  #   {:my_dep, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-  #
-  # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:poolboy, "~> 1.5"},
-      {:ex_doc, "~> 0.16", only: :dev},
-      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
-      {:excoveralls, "~> 0.5", only: :test}
+      {:credo, "~> 1.7", only: [:dev, :test]},
+      {:ex_doc, "~> 0.30", only: :dev},
+      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false},
+      {:poolboy, "~> 1.5"}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extra_section: "GUIDES",
+      extras: [
+        "CHANGELOG.md",
+        {:"README.md", title: "Readme"},
+        {:"guides/Frontpage.md", title: "Overview"},
+        "guides/Tutorial.md",
+        "guides/CreatingBackends.md"
+      ],
+      source_url: @source_url,
+      source_ref: "v#{@version}",
+      homepage_url: @source_url,
+      assets: "assets"
+    ]
+  end
+
+  defp package do
+    [
+      name: :hammer,
+      maintainers: ["Emmanuel Pinault", "June Kelly (june@junek.xyz)"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/master/CHANGELOG.md"
+      }
     ]
   end
 end

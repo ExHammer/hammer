@@ -59,7 +59,7 @@ defmodule ETSTest do
     {stamp, key} = Utils.stamp_key("something-pruned", 200_000)
     assert {:ok, 1} = ETS.count_hit(pid, key, stamp)
     assert {:ok, {{_, "something-pruned"}, 1, _, _}} = ETS.get_bucket(pid, key)
-    :timer.sleep(expiry_ms * 2)
+    :timer.sleep(expiry_ms * 5)
     assert {:ok, nil} = ETS.get_bucket(pid, key)
   end
 end

@@ -26,9 +26,9 @@ defmodule Hammer.Mixfile do
 
   defp deps do
     [
-      {:credo, "~> 1.6", only: [:dev, :test]},
-      {:ex_doc, "~> 0.28", only: :dev},
-      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test]},
+      {:ex_doc, "~> 0.30", only: :dev},
+      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false},
       {:poolboy, "~> 1.5"}
     ]
   end

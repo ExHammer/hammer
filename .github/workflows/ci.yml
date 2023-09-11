@@ -24,7 +24,7 @@ jobs:
           - otp_version: 25
             elixir_version: 1.12.3
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: erlef/setup-beam@v1
         with:

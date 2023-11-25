@@ -21,7 +21,7 @@ by adding `:hammer` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:hammer, "~> 6.1"}
+    {:hammer, "~> 7.0"}
   ]
 end
 ```
@@ -38,7 +38,6 @@ Example:
 
 ```elixir
 defmodule MyApp.VideoUpload do
-
   def upload(video_data, user_id) do
     case Hammer.check_rate("upload_video:#{user_id}", 60_000, 5) do
       {:allow, _count} ->
@@ -47,7 +46,6 @@ defmodule MyApp.VideoUpload do
         # deny the request
     end
   end
-
 end
 ```
 
@@ -57,14 +55,6 @@ The `Hammer` module provides the following functions:
 - `check_rate_inc(id, scale_ms, limit, increment)`
 - `inspect_bucket(id, scale_ms, limit)`
 - `delete_buckets(id)`
-
-Backends are configured via `Mix.Config`:
-
-```elixir
-config :hammer,
-  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 4,
-                                 cleanup_interval_ms: 60_000 * 10]}
-```
 
 See the [Tutorial](https://hexdocs.pm/hammer/tutorial.html) for more.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.0.0 - unreleased
+
+- remove `poolboy` dependency
+- improve ETS backend efficiency ~15x
+- fix ETS backend overload
+- remove global supervisor
+
 ## 6.1.0 - 2022-06-13
 
 ### Changed

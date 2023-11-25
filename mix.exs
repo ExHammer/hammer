@@ -1,17 +1,15 @@
-defmodule Hammer.Mixfile do
+defmodule Hammer.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/ExHammer/hammer"
-  @version "6.1.0"
+  @version "7.0.0"
 
   def project do
     [
       app: :hammer,
       description: "A rate-limiter with plugable backends.",
       version: @version,
-      elixir: "~> 1.6",
-      build_embedded: Mix.env() == :prod,
-      start_permanent: Mix.env() == :prod,
+      elixir: "~> 1.15",
       deps: deps(),
       docs: docs(),
       package: package(),
@@ -21,15 +19,14 @@ defmodule Hammer.Mixfile do
 
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [mod: {Hammer.Application, []}, extra_applications: [:logger, :runtime_tools]]
+    [extra_applications: [:logger]]
   end
 
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test]},
       {:ex_doc, "~> 0.30", only: :dev},
-      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false},
-      {:poolboy, "~> 1.5"}
+      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false}
     ]
   end
 

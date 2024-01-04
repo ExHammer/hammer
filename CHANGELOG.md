@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Ensure Elixir version is ~> 1.13 https://github.com/ExHammer/hammer/pull/79
+
 ## 6.1.0 - 2022-06-13
 
 ### Changed

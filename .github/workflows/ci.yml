@@ -10,7 +10,6 @@ on:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
     env:
       MIX_ENV: test
 

@@ -16,6 +16,8 @@ defmodule Hammer.Backend.ETS do
   - `expiry_ms`: (integer) time in ms before a bucket is auto-deleted,
     should be larger than the expected largest size/duration of a bucket
   - `cleanup_interval_ms`: (integer) time between cleanup runs,
+  - `ets_table_type`: (atom) type of ETS table, defaults to `:set`, and can be
+    either `:set` or `:ordered_set`
 
   Example:
 
@@ -160,6 +162,7 @@ defmodule Hammer.Backend.ETS do
   def init(args) do
     cleanup_interval_ms = Keyword.get(args, :cleanup_interval_ms)
     expiry_ms = Keyword.get(args, :expiry_ms)
+    ets_table_type = Keyword.get(args, :ets_table_type, :set)
 
     if !expiry_ms do
       raise RuntimeError, "Missing required config: expiry_ms"
@@ -169,9 +172,13 @@ defmodule Hammer.Backend.ETS do
       raise RuntimeError, "Missing required config: cleanup_interval_ms"
     end
 
+    if ets_table_type not in [:set, :ordered_set] do
+      raise RuntimeError, "Invalid config: ets_table_type '#{ets_table_type}'"
+    end
+
     case :ets.info(@ets_table_name) do
       :undefined ->
-        :ets.new(@ets_table_name, [:named_table, :ordered_set, :public])
+        :ets.new(@ets_table_name, [:named_table, ets_table_type, :public])
         :timer.send_interval(cleanup_interval_ms, :prune)
 
       _ ->

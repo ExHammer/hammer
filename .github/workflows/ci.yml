@@ -10,7 +10,6 @@ on:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
     env:
       MIX_ENV: test
 
@@ -23,6 +22,9 @@ jobs:
         exclude:
           - otp_version: 26
             elixir_version: 1.13
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
 

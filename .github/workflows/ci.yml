@@ -33,7 +33,7 @@ jobs:
           otp-version: ${{matrix.otp_version}}
           elixir-version: ${{matrix.elixir_version}}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             deps

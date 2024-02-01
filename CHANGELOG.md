@@ -4,7 +4,9 @@
 
 ### Changed
 
-- Ensure Elixir version is ~> 1.13 https://github.com/ExHammer/hammer/pull/79
+## 6.2.0 - 2024-01-31
+
+- Ensure Elixir version is ~> 1.13 https://github.com/ExHammer/hammer/pull/79. 
 
 ## 6.1.0 - 2022-06-13
 

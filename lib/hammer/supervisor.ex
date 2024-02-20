@@ -27,7 +27,7 @@ defmodule Hammer.Supervisor do
     children =
       Enum.map(config, fn {k, c} ->
         "hammer_backend_#{k}_pool"
-        |> String.to_existing_atom()
+        |> String.to_atom()
         |> to_pool_spec(c)
       end)
 

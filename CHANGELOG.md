@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 6.2.1 - 2024-02-23
+
+- Fix issue in OTP 26 and Elixir 1.15 by not using to_existing_atom in configuration
+
 ### Changed
 
 ## 6.2.0 - 2024-01-31

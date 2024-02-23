@@ -6,7 +6,7 @@ defmodule Hammer.Utils do
   end
 
   def pool_name(name) do
-    String.to_existing_atom("hammer_backend_#{name}_pool")
+    String.to_atom("hammer_backend_#{name}_pool")
   end
 
   # Returns Erlang Time as milliseconds since 00:00 GMT, January 1, 1970

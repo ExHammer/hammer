@@ -159,7 +159,6 @@
           {Credo.Check.Warning.RaiseInsideRescue, []},
           {Credo.Check.Warning.SpecWithStruct, []},
           {Credo.Check.Warning.UnsafeExec, []},
-          {Credo.Check.Warning.UnsafeToAtom, []},
           {Credo.Check.Warning.UnusedEnumOperation, []},
           {Credo.Check.Warning.UnusedFileOperation, []},
           {Credo.Check.Warning.UnusedKeywordOperation, []},
@@ -188,6 +187,7 @@
           {Credo.Check.Refactor.NegatedIsNil, []},
           {Credo.Check.Refactor.VariableRebinding, []},
           {Credo.Check.Warning.LeakyEnvironment, []},
+          {Credo.Check.Warning.UnsafeToAtom, []},
           {Credo.Check.Readability.Specs,
            files: %{
              excluded: [

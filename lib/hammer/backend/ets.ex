@@ -88,21 +88,21 @@ defmodule Hammer.Backend.ETS do
           {:ok, count :: integer}
           | {:error, reason :: any}
   def count_hit(_pid, key, now, increment) do
-    if :ets.member(@ets_table_name, key) do
-      [count, _] =
-        :ets.update_counter(@ets_table_name, key, [
+    [count | _] =
+      :ets.update_counter(
+        @ets_table_name,
+        key,
+        [
           # Increment count field
           {2, increment},
           # Set updated_at to now
           {4, 1, 0, now}
-        ])
+        ],
+        # Insert {key, 0, created_at, updated_at}
+        {key, 0, now, now}
+      )
 
-      {:ok, count}
-    else
-      # Insert {key, count, created_at, updated_at}
-      true = :ets.insert(@ets_table_name, {key, increment, now, now})
-      {:ok, increment}
-    end
+    {:ok, count}
   rescue
     e ->
       {:error, e}

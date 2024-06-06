@@ -84,18 +84,20 @@ defmodule HammerTest do
   end
 
   test "returns expected tuples on inspect_bucket" do
-    assert {:ok, {0, 2, _, nil, nil}} = Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
-    assert {:allow, 1} = Hammer.check_rate("inspect_bucket11", 1000, 2)
-    assert {:ok, {1, 1, _, _, _}} = Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
-    assert {:allow, 2} = Hammer.check_rate("inspect_bucket11", 1000, 2)
-    assert {:allow, 1} = Hammer.check_rate("inspect_bucket22", 1000, 2)
-    assert {:ok, {2, 0, _, _, _}} = Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
-    assert {:deny, 2} = Hammer.check_rate("inspect_bucket11", 1000, 2)
+    assert {:ok, {0, 2, _, nil, nil}} = Hammer.inspect_bucket("inspect_bucket11", 10_000, 2)
+    assert {:allow, 1} = Hammer.check_rate("inspect_bucket11", 10_000, 2)
+    assert {:ok, {1, 1, _, _, _}} = Hammer.inspect_bucket("inspect_bucket11", 10_000, 2)
+    assert {:allow, 2} = Hammer.check_rate("inspect_bucket11", 10_000, 2)
+    assert {:allow, 1} = Hammer.check_rate("inspect_bucket22", 10_000, 2)
+    assert {:ok, {2, 0, _, _, _}} = Hammer.inspect_bucket("inspect_bucket11", 10_000, 2)
+    assert {:deny, 2} = Hammer.check_rate("inspect_bucket11", 10_000, 2)
+
+    :timer.sleep(1)
 
     assert {:ok, {3, 0, ms_to_next_bucket, _, _}} =
-             Hammer.inspect_bucket("inspect_bucket11", 1000, 2)
+             Hammer.inspect_bucket("inspect_bucket11", 10_000, 2)
 
-    assert ms_to_next_bucket < 1000
+    assert ms_to_next_bucket < 10_000
   end
 
   test "returns expected tuples on delete_buckets" do
@@ -125,5 +127,25 @@ defmodule HammerTest do
     assert {:allow, 9} = Hammer.check_rate_inc("cost-bucket2", 1000, 10, 4)
     assert {:allow, 10} = Hammer.check_rate("cost-bucket2", 1000, 10)
     assert {:deny, 10} = Hammer.check_rate_inc("cost-bucket2", 1000, 10, 2)
+  end
+
+  test "ms_to_next_bucket should be equal to scale_ms on first check_rate", %{bucket: bucket} do
+    scale_ms = :timer.seconds(20)
+    assert {:ok, {0, 2, _, nil, nil}} = Hammer.inspect_bucket(bucket, scale_ms, 2)
+    assert {:allow, 1} = Hammer.check_rate(bucket, scale_ms, 2)
+    assert {:ok, {1, 1, ms_to_next_bucket, _created, _updated}} = Hammer.inspect_bucket(bucket, scale_ms, 2)
+
+    assert ms_to_next_bucket > :timer.seconds(19)
+    assert ms_to_next_bucket <= :timer.seconds(20)
+  end
+
+  test "ms_to_next_bucket should be equal to scale_ms on first check_rate_inc", %{bucket: bucket} do
+    scale_ms = :timer.seconds(20)
+    assert {:ok, {0, 2, _, nil, nil}} = Hammer.inspect_bucket(bucket, scale_ms, 2)
+    assert {:allow, 2} = Hammer.check_rate_inc(bucket, scale_ms, 2, 2)
+    assert {:ok, {2, 0, ms_to_next_bucket, _created, _updated}} = Hammer.inspect_bucket(bucket, scale_ms, 2)
+
+    assert ms_to_next_bucket > :timer.seconds(19)
+    assert ms_to_next_bucket <= :timer.seconds(20)
   end
 end

@@ -17,9 +17,7 @@ defmodule Hammer.Utils do
   # Returns tuple of {timestamp, key}, where key is {bucket_number, id}
   def stamp_key(id, scale_ms) do
     stamp = timestamp()
-    # with scale_ms = 1 bucket changes every millisecond
-    bucket_number = trunc(stamp / scale_ms)
-    key = {bucket_number, id}
+    key = {scale_ms, id}
     {stamp, key}
   end
 

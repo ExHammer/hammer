@@ -10,6 +10,7 @@ defmodule Hammer.Backend do
   @callback count_hit(
               pid :: pid(),
               key :: bucket_key,
+              scale_ms :: integer,
               now :: integer
             ) ::
               {:ok, count :: integer}
@@ -18,6 +19,7 @@ defmodule Hammer.Backend do
   @callback count_hit(
               pid :: pid(),
               key :: bucket_key,
+              scale_ms :: integer,
               now :: integer,
               increment :: integer
             ) ::

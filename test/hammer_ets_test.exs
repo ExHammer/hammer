@@ -23,9 +23,9 @@ defmodule ETSTest do
   test "count_hit", context do
     pid = context[:pid]
     {stamp, key} = Utils.stamp_key("one", 200_000)
-    assert {:ok, 1} = ETS.count_hit(pid, key, stamp)
-    assert {:ok, 2} = ETS.count_hit(pid, key, stamp)
-    assert {:ok, 3} = ETS.count_hit(pid, key, stamp)
+    assert {:ok, 1} = ETS.count_hit(pid, key, 200_000, stamp)
+    assert {:ok, 2} = ETS.count_hit(pid, key, 200_000, stamp)
+    assert {:ok, 3} = ETS.count_hit(pid, key, 200_000, stamp)
   end
 
   test "get_bucket", context do
@@ -34,10 +34,10 @@ defmodule ETSTest do
     # With no hits
     assert {:ok, nil} = ETS.get_bucket(pid, key)
     # With one hit
-    assert {:ok, 1} = ETS.count_hit(pid, key, stamp)
+    assert {:ok, 1} = ETS.count_hit(pid, key, 200_000, stamp)
     assert {:ok, {{_, "two"}, 1, _, _}} = ETS.get_bucket(pid, key)
     # With two hits
-    assert {:ok, 2} = ETS.count_hit(pid, key, stamp)
+    assert {:ok, 2} = ETS.count_hit(pid, key, 200_000, stamp)
     assert {:ok, {{_, "two"}, 2, _, _}} = ETS.get_bucket(pid, key)
   end
 
@@ -47,9 +47,9 @@ defmodule ETSTest do
     # With no hits
     assert {:ok, 0} = ETS.delete_buckets(pid, "three")
     # With three hits in same bucket
-    assert {:ok, 1} = ETS.count_hit(pid, key, stamp)
-    assert {:ok, 2} = ETS.count_hit(pid, key, stamp)
-    assert {:ok, 3} = ETS.count_hit(pid, key, stamp)
+    assert {:ok, 1} = ETS.count_hit(pid, key, 200_000, stamp)
+    assert {:ok, 2} = ETS.count_hit(pid, key, 200_000, stamp)
+    assert {:ok, 3} = ETS.count_hit(pid, key, 200_000, stamp)
     assert {:ok, 1} = ETS.delete_buckets(pid, "three")
   end
 
@@ -57,7 +57,7 @@ defmodule ETSTest do
     pid = context[:pid]
     expiry_ms = context[:expiry_ms]
     {stamp, key} = Utils.stamp_key("something-pruned", 200_000)
-    assert {:ok, 1} = ETS.count_hit(pid, key, stamp)
+    assert {:ok, 1} = ETS.count_hit(pid, key, 200_000, stamp)
     assert {:ok, {{_, "something-pruned"}, 1, _, _}} = ETS.get_bucket(pid, key)
     :timer.sleep(expiry_ms * 5)
     assert {:ok, nil} = ETS.get_bucket(pid, key)

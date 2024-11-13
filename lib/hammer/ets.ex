@@ -52,6 +52,10 @@ defmodule Hammer.ETS do
       def get(key, scale) do
         Hammer.ETS.get(@table, key, scale)
       end
+
+      def wait(scale) do
+        Hammer.ETS.wait(scale)
+      end
     end
   end
 
@@ -97,6 +101,14 @@ defmodule Hammer.ETS do
       [{_full_key, count, _expires_at}] -> count
       [] -> 0
     end
+  end
+
+  def wait(scale) do
+    now = now()
+    window = div(now, scale)
+    expires_at = (window + 1) * scale
+    sleep_for = max(expires_at - now, 0)
+    :timer.sleep(sleep_for)
   end
 
   @impl GenServer

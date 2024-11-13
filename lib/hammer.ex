@@ -22,13 +22,13 @@ defmodule Hammer do
   @type count :: pos_integer
   @type increment :: non_neg_integer
 
-  @callback check_rate(key, scale, limit) :: {:allow, count} | {:deny, limit}
-  @callback check_rate(key, scale, limit, increment) :: {:allow, count} | {:deny, limit}
+  @callback hit(key, scale, increment) :: count
+  @callback set(key, scale, count) :: count
+  @callback get(key, scale) :: count
 
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @behaviour Hammer
-
       @hammer_opts opts
 
       backend =
@@ -42,6 +42,13 @@ defmodule Hammer do
       # this allows :ets to be aliased to Hammer.ETS
       backend = with :ets <- backend, do: Hammer.ETS
       @before_compile backend
+
+      def check_rate(key, scale, limit, increment \\ 1) do
+        count = hit(key, scale, increment)
+        if count <= limit, do: {:allow, count}, else: {:deny, limit}
+      end
+
+      def reset(key, scale), do: set(key, scale, 0)
     end
   end
 end

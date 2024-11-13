@@ -103,6 +103,7 @@ defmodule Hammer.ETS do
     end
   end
 
+  @doc false
   def wait(scale) do
     now = now()
     window = div(now, scale)

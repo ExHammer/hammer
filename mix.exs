@@ -39,7 +39,7 @@ defmodule Hammer.MixProject do
       source_url: @source_url,
       source_ref: "v#{@version}",
       homepage_url: @source_url,
-      assets: "assets"
+      assets: %{"assets" => "assets"}
     ]
   end
 

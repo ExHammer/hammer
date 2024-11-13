@@ -2,20 +2,17 @@ defmodule Hammer.ETS do
   @moduledoc """
   An ETS backend for Hammer.
 
-  Compile-time configuration:
-  - `:table` - (atom) name of the ETS table, defaults to the module name that called `use Hammer`
-
-  Run-time configuration:
-  - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 10 minutes
-
-  Example:
-
       defmodule MyApp.RateLimit do
         use Hammer, backend: :ets, table: MyApp.RateLimit
       end
 
       MyApp.RateLimit.start_link(clean_period: :timer.minutes(10))
 
+  Compile-time configuration:
+  - `:table` - (atom) name of the ETS table, defaults to the module name that called `use Hammer`
+
+  Runtime configuration:
+  - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 10 minutes
   """
 
   use GenServer

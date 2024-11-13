@@ -33,17 +33,18 @@ jobs:
 
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{matrix.otp_version}}
-          elixir-version: ${{matrix.elixir_version}}
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
 
       - uses: actions/cache@v4
         with:
           path: |
             deps
             _build
-          key: test-${{ matrix.otp_version }}-${{ matrix.elixir_version }}-${{ hashFiles('**/mix.lock') }}
+          key: test-otp-${{ matrix.otp }}-elixir-${{ matrix.elixir }}-ref-${{ github.head_ref || github.ref }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            test-${{ matrix.otp_version }}-${{ matrix.elixir_version }}
+            test-otp-${{ matrix.otp }}-elixir-${{ matrix.elixir }}-ref-${{ github.head_ref || github.ref }}-mix-
+            test-otp-${{ matrix.otp }}-elixir-${{ matrix.elixir }}-ref-refs/heads/master-mix-
 
       - run: mix deps.get
       - run: mix deps.unlock --check-unused

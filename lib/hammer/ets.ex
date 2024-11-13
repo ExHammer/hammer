@@ -8,9 +8,10 @@ defmodule Hammer.ETS do
   Example:
 
       defmodule MyApp.RateLimit do
-        # these are the defaults
         use Hammer, backend: :ets, table: MyApp.RateLimit
       end
+
+      MyApp.RateLimit.start_link(clean_period: :timer.minutes(10))
 
   """
 
@@ -28,7 +29,6 @@ defmodule Hammer.ETS do
 
   Accepts the following options:
     - `GenServer.options()`
-    - `:table` for the ETS table name, defaults to the module name
     - `:clean_period` for how often to perform garbage collection
   """
   @spec start_link(table :: atom, [start_option]) :: GenServer.on_start()

@@ -58,7 +58,7 @@ defmodule Hammer.ETS do
     if count <= limit, do: {:allow, count}, else: {:deny, limit}
   end
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     clean_period = Keyword.get(opts, :clean_period, :timer.minutes(10))
     table = Keyword.fetch!(opts, :table)
@@ -77,7 +77,7 @@ defmodule Hammer.ETS do
     {:ok, %{table: table, clean_period: clean_period}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:clean, state) do
     clean(state.table)
     schedule(state.clean_period)

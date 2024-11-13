@@ -18,6 +18,11 @@ defmodule Hammer.ETS do
 
   @type start_option :: {:table, atom} | {:clean_period, timeout} | GenServer.option()
 
+  @doc false
+  def __config__(module, opts) do
+    Keyword.get(opts, :table, module)
+  end
+
   @doc """
   Starts the process that creates and cleans the ETS table.
 
@@ -26,8 +31,10 @@ defmodule Hammer.ETS do
     - `:table` for the ETS table name, defaults to the module name
     - `:clean_period` for how often to perform garbage collection
   """
-  @spec start_link([start_option]) :: GenServer.on_start()
-  def start_link(opts) do
+  @spec start_link(table :: atom, [start_option]) :: GenServer.on_start()
+  def start_link(table, opts) do
+    opts = Keyword.put_new(opts, :table, table)
+
     {gen_opts, opts} =
       Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
@@ -53,7 +60,7 @@ defmodule Hammer.ETS do
 
   @impl true
   def init(opts) do
-    clean_period = Keyword.fetch!(opts, :clean_period)
+    clean_period = Keyword.get(opts, :clean_period, :timer.minutes(10))
     table = Keyword.fetch!(opts, :table)
 
     ^table =

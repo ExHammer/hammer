@@ -30,6 +30,7 @@ defmodule Hammer.Backend.ETS do
   @behaviour Hammer.Backend
 
   use GenServer
+
   alias Hammer.Utils
 
   @type bucket_key :: {bucket :: integer, id :: String.t()}
@@ -68,12 +69,13 @@ defmodule Hammer.Backend.ETS do
   @spec count_hit(
           pid :: pid(),
           key :: bucket_key,
+          scale_ms :: integer,
           now :: integer
         ) ::
           {:ok, count :: integer}
           | {:error, reason :: any}
-  def count_hit(pid, key, now) do
-    count_hit(pid, key, now, 1)
+  def count_hit(pid, key, scale_ms, now) do
+    count_hit(pid, key, scale_ms, now, 1)
   end
 
   @doc """
@@ -82,12 +84,13 @@ defmodule Hammer.Backend.ETS do
   @spec count_hit(
           pid :: pid(),
           key :: bucket_key,
+          scale_ms :: integer,
           now :: integer,
           increment :: integer
         ) ::
           {:ok, count :: integer}
           | {:error, reason :: any}
-  def count_hit(_pid, key, now, increment) do
+  def count_hit(pid, key, scale_ms, now, increment) do
     if :ets.member(@ets_table_name, key) do
       [count, _] =
         :ets.update_counter(@ets_table_name, key, [
@@ -101,6 +104,7 @@ defmodule Hammer.Backend.ETS do
     else
       # Insert {key, count, created_at, updated_at}
       true = :ets.insert(@ets_table_name, {key, increment, now, now})
+      Process.send_after(pid, {:delete_bucket, key}, scale_ms)
       {:ok, increment}
     end
   rescue
@@ -207,5 +211,16 @@ defmodule Hammer.Backend.ETS do
     ])
 
     {:noreply, state}
+  end
+
+  def handle_info({:delete_bucket, {_bucket, id}}, state) do
+    :ets.select_delete(@ets_table_name, [
+      {{{:"$1", :"$2"}, :_, :_, :_}, [{:==, :"$2", id}], [true]}
+    ])
+
+    {:noreply, state}
+  rescue
+    _e ->
+      {:noreply, state}
   end
 end

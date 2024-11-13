@@ -48,7 +48,7 @@ defmodule Hammer do
   def check_rate(backend, id, scale_ms, limit) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
 
-    case call_backend(backend, :count_hit, [key, stamp]) do
+    case call_backend(backend, :count_hit, [key, scale_ms, stamp]) do
       {:ok, count} ->
         if count > limit do
           {:deny, limit}
@@ -95,7 +95,7 @@ defmodule Hammer do
   def check_rate_inc(backend, id, scale_ms, limit, increment) do
     {stamp, key} = Utils.stamp_key(id, scale_ms)
 
-    case call_backend(backend, :count_hit, [key, stamp, increment]) do
+    case call_backend(backend, :count_hit, [key, scale_ms, stamp, increment]) do
       {:ok, count} ->
         if count > limit do
           {:deny, limit}
@@ -110,8 +110,8 @@ defmodule Hammer do
 
   @spec inspect_bucket(id :: String.t(), scale_ms :: integer, limit :: integer) ::
           {:ok,
-           {count :: integer, count_remaining :: integer, ms_to_next_bucket :: integer,
-            created_at :: integer | nil, updated_at :: integer | nil}}
+           {count :: integer, count_remaining :: integer, ms_to_next_bucket :: integer, created_at :: integer | nil,
+            updated_at :: integer | nil}}
           | {:error, reason :: any}
   @doc """
   Inspect bucket to get count, count_remaining, ms_to_next_bucket, created_at,
@@ -143,22 +143,25 @@ defmodule Hammer do
 
   @spec inspect_bucket(backend :: atom, id :: String.t(), scale_ms :: integer, limit :: integer) ::
           {:ok,
-           {count :: integer, count_remaining :: integer, ms_to_next_bucket :: integer,
-            created_at :: integer | nil, updated_at :: integer | nil}}
+           {count :: integer, count_remaining :: integer, ms_to_next_bucket :: integer, created_at :: integer | nil,
+            updated_at :: integer | nil}}
           | {:error, reason :: any}
   @doc """
   Same as inspect_bucket/3, but allows specifying a backend
   """
   def inspect_bucket(backend, id, scale_ms, limit) do
-    {stamp, key} = Utils.stamp_key(id, scale_ms)
-    ms_to_next_bucket = elem(key, 0) * scale_ms + scale_ms - stamp
+    {_stamp, key} = Utils.stamp_key(id, scale_ms)
 
     case call_backend(backend, :get_bucket, [key]) do
       {:ok, nil} ->
-        {:ok, {0, limit, ms_to_next_bucket, nil, nil}}
+        {:ok, {0, limit, scale_ms, nil, nil}}
 
       {:ok, {_, count, created_at, updated_at}} ->
+        now = Utils.timestamp()
+        time_passed = now - created_at
+        ms_to_next_bucket = max(scale_ms - time_passed, 0)
         count_remaining = if limit > count, do: limit - count, else: 0
+
         {:ok, {count, count_remaining, ms_to_next_bucket, created_at, updated_at}}
 
       {:error, reason} ->

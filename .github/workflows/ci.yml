@@ -17,11 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-20.04]
-        elixir_version: [1.13, 1.14, 1.15, 1.16, 1.17]
-        otp_version: [24, 25, 26, 27]
-        exclude:
-          - otp_version: 26
-            elixir_version: 1.13
+        elixir_version: [1.15, 1.16, 1.17]
+        otp_version: [26, 27]
 
     runs-on: ${{ matrix.os }}
 

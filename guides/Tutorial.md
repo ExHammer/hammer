@@ -14,8 +14,8 @@ end
 
 Then, run:
 
-```sh
-mix deps.get
+```console
+$ mix deps.get
 ```
 
 ## Core Concepts

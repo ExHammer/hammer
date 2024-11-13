@@ -41,12 +41,16 @@ defmodule Hammer.ETS do
         Hammer.ETS.start_link(opts)
       end
 
-      def check_rate(key, scale, limit) do
-        Hammer.ETS.check_rate(@table, key, scale, limit)
+      def hit(key, scale, increment \\ 1) do
+        Hammer.ETS.hit(@table, key, scale, increment)
       end
 
-      def check_rate(key, scale, limit, increment) do
-        Hammer.ETS.check_rate(@table, key, scale, limit, increment)
+      def set(key, scale, count) do
+        Hammer.ETS.set(@table, key, scale, count)
+      end
+
+      def get(key, scale) do
+        Hammer.ETS.get(@table, key, scale)
       end
     end
   end
@@ -68,12 +72,31 @@ defmodule Hammer.ETS do
     GenServer.start_link(__MODULE__, opts, gen_opts)
   end
 
-  def check_rate(table, key, scale, limit, increment \\ 1) do
-    bucket = div(now(), scale)
-    full_key = {key, bucket}
-    expires_at = (bucket + 1) * scale
-    count = :ets.update_counter(table, full_key, increment, {full_key, 0, expires_at})
-    if count <= limit, do: {:allow, count}, else: {:deny, limit}
+  @doc false
+  def hit(table, key, scale, increment \\ 1) do
+    window = div(now(), scale)
+    full_key = {key, window}
+    expires_at = (window + 1) * scale
+    :ets.update_counter(table, full_key, increment, {full_key, 0, expires_at})
+  end
+
+  @doc false
+  def set(table, key, scale, count) do
+    window = div(now(), scale)
+    full_key = {key, window}
+    expires_at = (window + 1) * scale
+    :ets.update_counter(table, full_key, {2, 1, 0, count}, {full_key, count, expires_at})
+  end
+
+  @doc false
+  def get(table, key, scale) do
+    window = div(now(), scale)
+    full_key = {key, window}
+
+    case :ets.lookup(table, full_key) do
+      [{_full_key, count, _expires_at}] -> count
+      [] -> 0
+    end
   end
 
   @impl GenServer

@@ -52,7 +52,7 @@ end
 
 ## Available Backends
 
-- [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html)
+- [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) (default)
 - [Hammer.Redis](https://github.com/ExHammer/hammer-backend-redis)
 - [Hammer.Mnesia](https://github.com/ExHammer/hammer-backend-mnesia) (beta)
 

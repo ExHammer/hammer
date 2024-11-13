@@ -41,8 +41,7 @@ defmodule Hammer.ETSTest do
       assert {:deny, 2} = RateLimit.check_rate(key, scale, limit)
     end
 
-    @tag :slow
-    test "returns expected tuples on 100ms key check with a sleep in the middle" do
+    test "returns expected tuples after waiting for the next window" do
       key = "key"
       scale = 100
       limit = 2
@@ -51,7 +50,7 @@ defmodule Hammer.ETSTest do
       assert {:allow, 2} = RateLimit.check_rate(key, scale, limit)
       assert {:deny, 2} = RateLimit.check_rate(key, scale, limit)
 
-      :timer.sleep(101)
+      assert :ok = RateLimit.wait(scale)
 
       assert {:allow, 1} = RateLimit.check_rate(key, scale, limit)
       assert {:allow, 2} = RateLimit.check_rate(key, scale, limit)

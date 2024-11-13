@@ -8,11 +8,17 @@ defmodule Hammer do
         use Hammer, backend: :ets
       end
 
-      # Start the rate limiter, in case of ETS it will create the ETS table and schedule the cleanup
-      MyApp.RateLimit.start_link()
+      # Start the rate limiter, in case of ETS it will create the ETS table and schedule cleanups
+      MyApp.RateLimit.start_link(clean_period: :timer.minutes(10))
 
-      # Allow 10 requests per second
-      MyApp.RateLimit.check_rate("some-key", _scale_ms = 1000, _limit = 10)
+      # Check the rate limit allowing 10 requests per second
+      MyApp.RateLimit.check_rate("some-key", _scale = :timer.seconds(1), _limit = 10)
+
+      # Wait for the next window
+      MyApp.RateLimit.wait(_scale = :timer.seconds(1))
+
+      # Reset the rate limiter
+      MyApp.RateLimit.reset("some-key", _scale = :timer.seconds(1))
 
   """
 

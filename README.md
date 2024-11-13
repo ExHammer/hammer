@@ -20,17 +20,17 @@ def deps do
 end
 ```
 
-## Core Concepts
+## Default Algorithm
 
-Hammer uses a **fixed window counter** to track actions within set time windows, resetting the count at the start of each new window. For example, with a limit of 10 uploads per minute, a user could upload up to 10 files between `12:00:00` and `12:00:59`, and up to 10 more between `12:01:00` and `12:01:59`.
+By default, Hammer uses a **fixed window counter** to track actions within set time windows, resetting the count at the start of each new window. For example, with a limit of 10 uploads per minute, a user could upload up to 10 files between 12:00:00 and 12:00:59, and up to 10 more between 12:01:00 and 12:01:59.
+
+## Core Concepts
 
 - **Limit:** Maximum number of actions allowed in a window.
 - **Scale:** Duration of the time window (in milliseconds).
 - **Key:** Unique identifier (e.g., user ID) to scope the rate limiting.
 
 ## Example Usage
-
-Example:
 
 ```elixir
 defmodule MyApp.RateLimit do

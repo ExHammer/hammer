@@ -1,14 +1,12 @@
 # Hammer
 
-<img src="assets/horizontal.svg" alt="hammer" height="150px">
-
 [![Build Status](https://github.com/ExHammer/hammer/actions/workflows/ci.yml/badge.svg)](https://github.com/ExHammer/hammer/actions/workflows/ci.yml)
 [![Hex.pm](https://img.shields.io/hexpm/v/hammer.svg)](https://hex.pm/packages/hammer)
 [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/hammer)
 [![Total Download](https://img.shields.io/hexpm/dt/hammer.svg)](https://hex.pm/packages/hammer)
 [![License](https://img.shields.io/hexpm/l/hammer.svg)](https://github.com/ExHammer/hammer/blob/master/LICENSE.md)
 
-**Hammer** is a rate-limiter for Elixir with pluggable storage backends. Designed for simplicity, Hammer enables users to set limits on actions performed within specified time intervals, applying per-user or global limits on API requests, file uploads, and more.
+**Hammer** is a rate-limiter for Elixir with pluggable storage backends. Hammer enables users to set limits on actions performed within specified time intervals, applying per-user or global limits on API requests, file uploads, and more.
 
 ## Installation
 

@@ -2,7 +2,7 @@ defmodule Hammer.ETSTest do
   use ExUnit.Case, async: true
 
   defmodule RateLimit do
-    use Hammer, backend: Hammer.ETS
+    use Hammer, backend: :ets
   end
 
   setup do
@@ -42,16 +42,16 @@ defmodule Hammer.ETSTest do
     end
 
     @tag :slow
-    test "returns expected tuples on 1000ms bucket check with a sleep in the middle" do
+    test "returns expected tuples on 100ms bucket check with a sleep in the middle" do
       bucket = "bucket"
-      scale = :timer.seconds(1)
+      scale = 100
       limit = 2
 
       assert {:allow, 1} = RateLimit.check_rate(bucket, scale, limit)
       assert {:allow, 2} = RateLimit.check_rate(bucket, scale, limit)
       assert {:deny, 2} = RateLimit.check_rate(bucket, scale, limit)
 
-      :timer.sleep(1001)
+      :timer.sleep(101)
 
       assert {:allow, 1} = RateLimit.check_rate(bucket, scale, limit)
       assert {:allow, 2} = RateLimit.check_rate(bucket, scale, limit)

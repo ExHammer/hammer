@@ -31,7 +31,18 @@ defmodule Hammer do
     quote bind_quoted: [opts: opts] do
       @behaviour Hammer
 
-      @backend Keyword.get(opts, :backend, Hammer.ETS)
+      backend =
+        Keyword.get(opts, :backend) ||
+          raise ArgumentError, """
+          Hammer requires a backend to be specified. Example:
+
+              use Hammer, backend: :ets
+          """
+
+      # so that :ets could be "aliased" to Hammer.ETS
+      backend = with :ets <- backend, do: Hammer.ETS
+
+      @backend backend
       @config @backend.__config__(__MODULE__, opts)
 
       def child_spec(opts) do

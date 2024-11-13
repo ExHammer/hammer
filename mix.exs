@@ -35,6 +35,7 @@ defmodule Hammer.MixProject do
       main: "readme",
       extra_section: "GUIDES",
       extras: ["CHANGELOG.md", "README.md"] ++ Path.wildcard("guides/*.md"),
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       source_url: @source_url,
       source_ref: "v#{@version}",
       homepage_url: @source_url,

@@ -1,1 +1,1 @@
-# Upgrading to Hammer v7
+# Upgrading to Hammer V7

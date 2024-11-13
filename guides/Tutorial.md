@@ -1,5 +1,6 @@
 # Tutorial
 
+Hammer is a rate limiting library for Elixir that can help you control the frequency of specific actions in your application, such as limiting API requests, login attempts, or file uploads. This tutorial will guide you through setting up Hammer, defining a rate limiter, and applying rate limiting in your app.
 
 ## Installation
 
@@ -7,217 +8,112 @@ Add Hammer as a dependency in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:hammer, "~> 6.0"}]
+  [{:hammer, "~> 7.0.0"}]
 end
 ```
 
+Then, run:
+
+```sh
+mix deps.get
+```
 
 ## Core Concepts
 
-When we want to rate-limit some action, we want to ensure that the number of
-actions permitted is limited within a specified time-period. For example, a
-maximum of five times within on minute. Usually the limit is enforced per-user,
-per-client, or per some other unique-ish value, such as IP address. It's much
-rarer, but not unheard-of, to limit the action globally without taking the
-identity of the user or client into account.
+When rate-limiting an action, you specify a maximum number of allowed occurrences (the limit) within a certain time frame (the scale). For example, you might allow only 5 login attempts per minute for each user. The limit is typically enforced based on a unique identifier (like a user ID or IP address) but can also be applied globally.
 
-In the Hammer API, the maximum number of actions is the `limit`, and the
-timespan (in milliseconds) is the `scale_ms`. The combination of the name of the
-action with some unique identifier is the `id`.
+In Hammer:
+- `limit` is the maximum number of actions permitted.
+- `scale` is the time period (in milliseconds) for that limit.
+- `key` is a unique identifier for the rate limit, combining the action name with a user identifier (like "login_attempt:42" for user 42) is a common approach.
 
-Hammer uses a [Token Bucket](https://en.wikipedia.org/wiki/Token_bucket)
-algorithm to count the number of actions occurring in a "bucket". If the count
-within the bucket is lower than the limit, then the action is allowed, otherwise
-it is denied.
-
+Hammer uses a fixed window counter approach. It divides time into fixed-size windows of `scale` size and counts the number of requests in each window, blocking any requests that exceed the `limit`.
 
 ## Usage
 
-To use Hammer, you need to do two things:
+To use Hammer, you need to:
 
-- Configure the `:hammer` application
-- Use the functions in the `Hammer` module
+- Define a rate limiter module.
+- Add the Hammer backend to your application's supervision tree.
 
-In this example, we will use the `ETS` backend, which stores data in an
-in-memory ETS table.
+In this example, we'll use the Hammer.ETS backend, which stores data in an in-memory ETS table.
 
+### Step 1: Define a Rate Limiter
 
-## Configuring Hammer
-
-The Hammer OTP application is configured the usual way, using `Mix.Config`.
-Your project probably has a `config/config.exs` file, in which you should
-configure Hammer, like so:
+First, define a rate limiter module in your application. Use the `Hammer` module with your chosen backend and configure options as needed:
 
 ```elixir
-config :hammer,
-  backend: {Hammer.Backend.ETS,
-            [expiry_ms: 60_000 * 60 * 4,
-             cleanup_interval_ms: 60_000 * 10]}
-```
-
-The only configuration key (so far) is `:backend`, and its value is a tuple/pair
-of the backend module name, and a backend-specific keyword list of configuration
-options.
-
-Because expiry of stale buckets is so essential to the smooth operation of a
-rate-limiter, all backends will accept an `:expiry_ms` option, and many will
-also accept `:cleanup_interval_ms`, depending on how expiry is implemented
-internally.
-
-(For example, Redis supports native data expiry, and so doesn't require
-`:cleanup_interval_ms`.)
-
-The `:expiry_ms` value should be configured to be longer than the life of the
-longest bucket you will be using, as otherwise the bucket could be deleted while
-it is still counting up hits for its time period.
-
-The size of the backend worker pool can be tweaked with the `:pool_size` and
-`:pool_max_overflow` options, (which are then supplied to `poolboy`). `:pool_size`
-determines the size of the pool, and `:pool_max_overflow` determines how many extra
-workers can be spawned when the system is under pressure. The default for both is `0`,
-which will be fine for most systems. (Note: we've seen some weird errors sometimes when using a `:pool_max_overflow` higher than zero. Always check how this works for you in production, and consider setting a higher `:pool_size` instead).
-
-Luckily, even if you don't configure `:hammer` at all, the application will
-default to the ETS backend anyway, with some sensible defaults.
-
-
-## The Hammer Module
-
-Once the Hammer application is running (and it should just start automatically
-when your system starts), All you need to do is use the various functions in the
-`Hammer` module:
-
-- `check_rate(id::string, scale_ms::integer, limit::integer)`
-- `check_rate_inc(id::string, scale_ms::integer, limit::integer, increment::integer)`
-- `inspect_bucket(id::string, scale_ms::integer, limit::integer)`
-- `delete_buckets(id::string)`
-- `make_rate_checker(id_prefix, scale_ms, limit)`
-
-The most interesting is `check_rate`, which checks if the rate-limit for the
-given `id` has been exceeded in the specified time-`scale`.
-
-Ideally, the `id` should be a combination of some action-specific, descriptive
-prefix with some data which uniquely identifies the user or client performing
-the action.
-
-Example:
-
-```elixir
-# limit file uploads to 10 per minute per user
-user_id = get_user_id_somehow()
-case Hammer.check_rate("upload_file:#{user_id}", 60_000, 10) do
-  {:allow, _count} ->
-    # upload the file
-  {:deny, _limit} ->
-    # deny the request
+defmodule MyApp.RateLimit do
+  # Specify the backend and table for ETS storage
+  use Hammer, backend: :ets, table: __MODULE__
 end
 ```
 
+Here:
+- `:backend` specifies the storage backend (`:ets` for in-memory storage, `Hammer.Redis` for Redis, etc.).
+- `:table` is the ETS table name to create and use (default is `__MODULE__` so it can be ommited).
 
-## Custom increments
+### Step 2: Start the Rate Limiter
 
-The `Hammer` module also includes  a `check_rate_inc` function, which allows you
-to specify the number by which to increment the current bucket. This is useful
-for rate-limiting APIs which have some idea of "cost", where the cost of a given
-operation can be determined and expressed as an integer.
-
-Example:
+Add the rate limiter to your application's supervision tree or start it manually by calling `MyApp.RateLimit.start_link/1` with any runtime options:
 
 ```elixir
-# Bulk file upload
-user_id = get_user_id_somehow()
-n = get_number_of_files()
-case Hammer.check_rate_inc("upload_file_bulk:#{user_id}", 60_000, 10, n) do
-  {:allow, _count} ->
-    # upload all of the files
-  {:deny, _limit} ->
-    # deny the request
+MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
+```
+
+- `:clean_period` is an optional parameter for `:ets` backend that specifies how often to clean expired buckets in the ETS table.
+
+## Using the Rate Limiter
+
+With the rate limiter running, you can use `check_rate/3` or `check_rate/4` to enforce rate limits.
+
+### Example: Basic Rate Limit Check
+
+Suppose you want to limit file uploads to 10 per minute per user. Here's how you could use `check_rate/3`:
+
+```elixir
+user_id = 42
+key = "upload_file:#{user_id}"
+scale = :timer.minutes(1)
+limit = 10
+
+case MyApp.RateLimit.check_rate(key, scale, limit) do
+  {:allow, _count} -> # proceed with file upload
+  {:deny, _limit} -> # deny the request
 end
 ```
 
+### Customizing Rate Increments
 
-## Switching to Redis
-
-There may come a time when ETS just doesn't cut it, for example if we end up
-load-balancing across many nodes and want to keep our rate-limiter state in one
-central store. [Redis](https://redis.io) is ideal for this use-case, and
-fortunately Hammer supports
-a [Redis backend](https://github.com/ExHammer/hammer-backend-redis).
-
-To change our application to use the Redis backend, we only need to install the
-redis backend package, and change the `:backend` tuple that is used to configure
-the `:hammer` application:
+If you want to specify a custom increment—useful when each action has a "cost"—you can use `check_rate/4`. Here's an example for a bulk upload scenario:
 
 ```elixir
-# config :hammer,
-#   backend: {Hammer.Backend.ETS, []}
+user_id = 42
+key = "upload_file:#{user_id}"
+scale = :timer.minutes(1)
+limit = 10
+number_of_files = 3
 
-config :hammer,
-  backend: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
-                                   redix_config: [host: "localhost",
-                                                  port: 6379],
-                                   pool_size: 4,
-                                   pool_max_overflow: 2]}
+case MyApp.RateLimit.check_rate(key, scale, limit, number_of_files) do
+  {:allow, _count} -> # upload all files
+  {:deny, _limit} -> # deny the request
+end
 ```
 
-Then it should all Just Work™.
+## Using Hammer with Redis
 
-
-## (Advanced) using multiple backends at the same time
-
-Hammer can be configured to start multiple backends, which can then be referred
-to separately when checking a rate-limit. In this example we configure both and
-ETS backend under the key `:in_memory`, and a Redis backend under the key
-`:redis`...
+To persist rate-limiting data across multiple nodes, you can use the Redis backend. Install the `Hammer.Redis` backend and update your rate limiter configuration:
 
 ```elixir
-
-
-config :hammer,
-  backend: [
-    in_memory: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 2]},
-    redis: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
-                                    redix_config: [host: "localhost",
-                                                    port: 6379]]}
-  ]
+defmodule MyApp.RateLimit do
+  use Hammer, backend: Hammer.Redis, name: __MODULE__
+end
 ```
 
-We can then refer to these backends separately:
+Then, start the rate limiter with Redis configuration:
 
 ```elixir
-Hammer.check_rate(:in_memory, "upload:#{user_id}", 60_000, 5)
-Hammer.check_rate(:redis,     "upload:#{user_id}", 60_000, 5)
+MyApp.RateLimit.start_link(host: "redix.myapp.com")
 ```
 
-When using multiple backends the backend specifier key is mandatory, there is no
-notion of a default backend.
-
-In version 4.0 and up, it is even possible to have multiple instances of the same
-backend type, like so:
-
-```elixir
-config :hammer,
-  backend: [
-    redis_one: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 2,
-                                       redix_config: [host: "localhost",
-                                                      port: 6666]]}
-    redis_two: {Hammer.Backend.Redis, [expiry_ms: 60_000 * 60 * 5,
-                                       redix_config: [host: "localhost",
-                                                      port: 7777]]}
-  ]
-```
-
-
-## Further Reading
-
-See the docs for the [Hammer](/hammer/Hammer.html) module for full documentation
-on all the functions created by `use Hammer`.
-
-See the [Hammer.Application](/hammer/Hammer.Application.html) for all
-configuration options.
-
-Also, consult the documentation for the backend you are using, for any extra
-configuration options that may be relevant.
-
-See the [Creating Backends](/hammer/creatingbackends.html) for information on
-creating new backends for Hammer.
+Configuration options are the same as [Redix](https://hexdocs.pm/redix/Redix.html#start_link/1), except for `:name`, which comes from the module definition.

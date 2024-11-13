@@ -16,20 +16,20 @@ defmodule Hammer do
 
   """
 
-  @callback check_rate(id :: String.t(), scale_ms :: pos_integer, limit :: pos_integer) ::
-              {:allow, count :: pos_integer} | {:deny, limit :: pos_integer}
+  @type key :: term
+  @type scale :: pos_integer
+  @type limit :: pos_integer
+  @type count :: pos_integer
+  @type increment :: non_neg_integer
 
-  @callback check_rate(
-              id :: String.t(),
-              scale_ms :: pos_integer,
-              limit :: pos_integer,
-              increment :: integer
-            ) ::
-              {:allow, count :: pos_integer} | {:deny, limit :: pos_integer}
+  @callback check_rate(key, scale, limit) :: {:allow, count} | {:deny, limit}
+  @callback check_rate(key, scale, limit, increment) :: {:allow, count} | {:deny, limit}
 
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @behaviour Hammer
+
+      @hammer_opts opts
 
       backend =
         Keyword.get(opts, :backend) ||
@@ -39,31 +39,9 @@ defmodule Hammer do
               use Hammer, backend: :ets
           """
 
-      # so that :ets could be "aliased" to Hammer.ETS
+      # this allows :ets to be aliased to Hammer.ETS
       backend = with :ets <- backend, do: Hammer.ETS
-
-      @backend backend
-      @config @backend.__config__(__MODULE__, opts)
-
-      def child_spec(opts) do
-        %{
-          id: __MODULE__,
-          start: {__MODULE__, :start_link, [opts]},
-          type: :worker
-        }
-      end
-
-      def start_link(opts \\ []) do
-        @backend.start_link(@config, opts)
-      end
-
-      def check_rate(id, scale_ms, limit) do
-        @backend.check_rate(@config, id, scale_ms, limit)
-      end
-
-      def check_rate(id, scale_ms, limit, increment) do
-        @backend.check_rate(@config, id, scale_ms, limit, increment)
-      end
+      @before_compile backend
     end
   end
 end

@@ -2,8 +2,11 @@ defmodule Hammer.ETS do
   @moduledoc """
   An ETS backend for Hammer.
 
-  Configuration:
+  Compile-time configuration:
   - `:table` - (atom) name of the ETS table, defaults to the module name that called `use Hammer`
+
+  Run-time configuration:
+  - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 10 minutes
 
   Example:
 
@@ -17,12 +20,38 @@ defmodule Hammer.ETS do
 
   use GenServer
 
-  @type start_option :: {:table, atom} | {:clean_period, timeout} | GenServer.option()
+  defmacro __before_compile__(%{module: module} = _env) do
+    hammer_opts = Module.get_attribute(module, :hammer_opts)
+    table = Keyword.get(hammer_opts, :table, module)
 
-  @doc false
-  def __config__(module, opts) do
-    Keyword.get(opts, :table, module)
+    quote do
+      @table unquote(table)
+
+      def child_spec(opts) do
+        %{
+          id: unquote(module),
+          start: {unquote(module), :start_link, [opts]},
+          type: :worker
+        }
+      end
+
+      def start_link(opts) do
+        opts = Keyword.put(opts, :table, @table)
+        opts = Keyword.put_new(opts, :clean_period, :timer.minutes(10))
+        Hammer.ETS.start_link(opts)
+      end
+
+      def check_rate(key, scale, limit) do
+        Hammer.ETS.check_rate(@table, key, scale, limit)
+      end
+
+      def check_rate(key, scale, limit, increment) do
+        Hammer.ETS.check_rate(@table, key, scale, limit, increment)
+      end
+    end
   end
+
+  @type start_option :: {:clean_period, timeout} | GenServer.option()
 
   @doc """
   Starts the process that creates and cleans the ETS table.
@@ -31,25 +60,14 @@ defmodule Hammer.ETS do
     - `GenServer.options()`
     - `:clean_period` for how often to perform garbage collection
   """
-  @spec start_link(table :: atom, [start_option]) :: GenServer.on_start()
-  def start_link(table, opts) do
-    opts = Keyword.put_new(opts, :table, table)
-
+  @spec start_link([start_option]) :: GenServer.on_start()
+  def start_link(opts) do
     {gen_opts, opts} =
       Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
     GenServer.start_link(__MODULE__, opts, gen_opts)
   end
 
-  @doc """
-  Checks the rate-limit for a key.
-  """
-  @spec check_rate(:ets.table(), key, scale, limit, increment) :: {:allow, count} | {:deny, limit}
-        when key: term,
-             scale: pos_integer,
-             limit: pos_integer,
-             increment: pos_integer,
-             count: pos_integer
   def check_rate(table, key, scale, limit, increment \\ 1) do
     bucket = div(now(), scale)
     full_key = {key, bucket}
@@ -60,7 +78,7 @@ defmodule Hammer.ETS do
 
   @impl GenServer
   def init(opts) do
-    clean_period = Keyword.get(opts, :clean_period, :timer.minutes(10))
+    clean_period = Keyword.fetch!(opts, :clean_period)
     table = Keyword.fetch!(opts, :table)
 
     ^table =

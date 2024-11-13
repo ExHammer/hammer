@@ -1,6 +1,6 @@
-<img src="assets/horizontal.svg" alt="hammer" height="150px">
-
 # Hammer
+
+<img src="assets/horizontal.svg" alt="hammer" height="150px">
 
 [![Build Status](https://github.com/ExHammer/hammer/actions/workflows/ci.yml/badge.svg)](https://github.com/ExHammer/hammer/actions/workflows/ci.yml) [![Hex.pm](https://img.shields.io/hexpm/v/hammer.svg)](https://hex.pm/packages/hammer) [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/hammer)
 [![Total Download](https://img.shields.io/hexpm/dt/hammer.svg)](https://hex.pm/packages/hammer)

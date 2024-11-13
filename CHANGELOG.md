@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 7.0.0-rc.0
+
+- Breaking change. Completely new API. Consider upgrading only if you are experiencing performance problems with Hammer v6. See [./guides/upgrade-v7.md] for upgrade instructions.
 
 ## 6.2.1 - 2024-02-23
 

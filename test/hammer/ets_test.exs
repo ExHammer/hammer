@@ -129,4 +129,25 @@ defmodule Hammer.ETSTest do
       assert RateLimit.get(key, scale) == 0
     end
   end
+
+  defmodule CleanRateLimit do
+    use Hammer, backend: :ets
+  end
+
+  test "cleaning" do
+    start_supervised!({CleanRateLimit, clean_period: 100})
+
+    key = "key"
+    scale = 100
+    count = 10
+
+    assert {:allow, 1} = CleanRateLimit.check_rate(key, scale, count)
+
+    assert [_] = :ets.tab2list(CleanRateLimit)
+
+    CleanRateLimit.wait(scale)
+    CleanRateLimit.wait(scale)
+
+    assert :ets.tab2list(CleanRateLimit) == []
+  end
 end

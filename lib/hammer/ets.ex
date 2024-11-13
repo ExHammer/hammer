@@ -77,7 +77,7 @@ defmodule Hammer.ETS do
   end
 
   @doc false
-  def hit(table, key, scale, increment \\ 1) do
+  def hit(table, key, scale, increment) do
     window = div(now(), scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale

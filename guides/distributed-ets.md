@@ -14,13 +14,8 @@ defmodule MyApp.RateLimit do
   broadcasting mechanism to keep counters in sync across nodes in a cluster.
   """
 
-  def check_rate(key, scale, limit, increment \\ 1) do
-    count = hit(key, scale, increment)
-    if count <= limit, do: {:allow, count}, else: {:deny, limit}
-  end
-
   # Records a hit locally and broadcasts it to other nodes to synchronize.
-  def hit(key, scale, increment \\ 1) do
+  def hit(key, scale, limit, increment \\ 1) do
     :ok = broadcast({:hit, key, scale, increment})
     Local.hit(key, scale, increment)
   end
@@ -55,7 +50,7 @@ defmodule MyApp.RateLimit do
 
     @impl true
     def handle_info({:hit, key, scale, increment}, state) do      
-      _count = Local.hit(key, scale, increment)
+      _count = Local.inc(key, scale, increment)
       {:noreply, state}
     end
   end

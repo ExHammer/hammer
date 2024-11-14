@@ -28,7 +28,8 @@ defmodule Hammer do
   @type count :: pos_integer
   @type increment :: non_neg_integer
 
-  @callback hit(key, scale, increment) :: count
+  @callback hit(key, scale, limit, increment) :: {:allow, count} | {:deny, timeout}
+  @callback inc(key, scale, increment) :: count
   @callback set(key, scale, count) :: count
   @callback get(key, scale) :: count
 
@@ -48,11 +49,6 @@ defmodule Hammer do
       # this allows :ets to be aliased to Hammer.ETS
       backend = with :ets <- backend, do: Hammer.ETS
       @before_compile backend
-
-      def check_rate(key, scale, limit, increment \\ 1) do
-        count = hit(key, scale, increment)
-        if count <= limit, do: {:allow, count}, else: {:deny, limit}
-      end
 
       def reset(key, scale), do: set(key, scale, 0)
     end

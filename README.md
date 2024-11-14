@@ -44,9 +44,14 @@ key = "upload_video:#{user_id}"
 scale = :timer.minutes(1)
 limit = 3
 
-case MyApp.RateLimit.check_rate(key, scale, limit) do
-  {:allow, _count} -> :upload_the_video
-  {:deny, _limit} -> :deny_the_request
+case MyApp.RateLimit.hit(key, scale, limit) do
+  {:allow, _count} ->
+    # upload the video
+    :ok
+
+  {:deny, wait} ->
+    # deny the request
+    {:error, :rate_limit, _message = "try again in #{wait}ms"}
 end
 ```
 

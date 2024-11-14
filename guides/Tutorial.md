@@ -44,14 +44,12 @@ First, define a rate limiter module in your application. Use the `Hammer` module
 
 ```elixir
 defmodule MyApp.RateLimit do
-  # Specify the backend and table for ETS storage
-  use Hammer, backend: :ets, table: __MODULE__
+  use Hammer, backend: :ets
 end
 ```
 
 Here:
 - `:backend` specifies the storage backend (`:ets` for in-memory storage, `Hammer.Redis` for Redis, etc.).
-- `:table` is the ETS table name to create and use (default is `__MODULE__` so it can be ommited).
 
 ### Step 2: Start the Rate Limiter
 
@@ -65,11 +63,11 @@ MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
 
 ## Using the Rate Limiter
 
-With the rate limiter running, you can use `check_rate/3` or `check_rate/4` to enforce rate limits.
+With the rate limiter running, you can use `hit/3` or `hit/4` to enforce rate limits.
 
 ### Example: Basic Rate Limit Check
 
-Suppose you want to limit file uploads to 10 per minute per user. Here's how you could use `check_rate/3`:
+Suppose you want to limit file uploads to 10 per minute per user.
 
 ```elixir
 user_id = 42
@@ -77,15 +75,15 @@ key = "upload_file:#{user_id}"
 scale = :timer.minutes(1)
 limit = 10
 
-case MyApp.RateLimit.check_rate(key, scale, limit) do
-  {:allow, _count} -> # proceed with file upload
-  {:deny, _limit} -> # deny the request
+case MyApp.RateLimit.hit(key, scale, limit) do
+  {:allow, _current_count} -> # proceed with file upload
+  {:deny, _ms_until_next_window} -> # deny the request
 end
 ```
 
 ### Customizing Rate Increments
 
-If you want to specify a custom increment—useful when each action has a "cost"—you can use `check_rate/4`. Here's an example for a bulk upload scenario:
+If you want to specify a custom increment—useful when each action has a "cost"—you can use `hit/4`. Here's an example for a bulk upload scenario:
 
 ```elixir
 user_id = 42
@@ -94,9 +92,9 @@ scale = :timer.minutes(1)
 limit = 10
 number_of_files = 3
 
-case MyApp.RateLimit.check_rate(key, scale, limit, number_of_files) do
-  {:allow, _count} -> # upload all files
-  {:deny, _limit} -> # deny the request
+case MyApp.RateLimit.hit(key, scale, limit, number_of_files) do
+  {:allow, _current_count} -> # upload all files
+  {:deny, _ms_until_next_window} -> # deny the request
 end
 ```
 
@@ -106,11 +104,11 @@ To persist rate-limiting data across multiple nodes, you can use the Redis backe
 
 ```elixir
 defmodule MyApp.RateLimit do
-  use Hammer, backend: Hammer.Redis, name: __MODULE__
+  use Hammer, backend: Hammer.Redis
 end
 ```
 
-Then, start the rate limiter with Redis configuration:
+Then, start the rate limiter pool with Redis configuration:
 
 ```elixir
 MyApp.RateLimit.start_link(host: "redix.myapp.com")

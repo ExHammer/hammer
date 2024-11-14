@@ -38,8 +38,12 @@ defmodule Hammer.ETS do
         Hammer.ETS.start_link(opts)
       end
 
-      def hit(key, scale, increment \\ 1) do
-        Hammer.ETS.hit(@table, key, scale, increment)
+      def hit(key, scale, limit, increment \\ 1) do
+        Hammer.ETS.hit(@table, key, scale, limit, increment)
+      end
+
+      def inc(key, scale, increment \\ 1) do
+        Hammer.ETS.inc(@table, key, scale, increment)
       end
 
       def set(key, scale, count) do
@@ -48,10 +52,6 @@ defmodule Hammer.ETS do
 
       def get(key, scale) do
         Hammer.ETS.get(@table, key, scale)
-      end
-
-      def wait(scale) do
-        Hammer.ETS.wait(scale)
       end
     end
   end
@@ -74,7 +74,23 @@ defmodule Hammer.ETS do
   end
 
   @doc false
-  def hit(table, key, scale, increment) do
+  def hit(table, key, scale, limit, increment) do
+    now = now()
+    window = div(now, scale)
+    full_key = {key, window}
+    expires_at = (window + 1) * scale
+    count = :ets.update_counter(table, full_key, increment, {full_key, 0, expires_at})
+
+    if count <= limit do
+      {:allow, count}
+    else
+      until_next_window = max(expires_at - now, 0)
+      {:deny, until_next_window}
+    end
+  end
+
+  @doc false
+  def inc(table, key, scale, increment) do
     window = div(now(), scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
@@ -86,7 +102,7 @@ defmodule Hammer.ETS do
     window = div(now(), scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
-    :ets.update_counter(table, full_key, {2, 1, 0, count}, {full_key, count, expires_at})
+    :ets.update_counter(table, full_key, {2, 1, 0, count}, {full_key, 0, expires_at})
   end
 
   @doc false
@@ -98,15 +114,6 @@ defmodule Hammer.ETS do
       [{_full_key, count, _expires_at}] -> count
       [] -> 0
     end
-  end
-
-  @doc false
-  def wait(scale) do
-    now = now()
-    window = div(now, scale)
-    expires_at = (window + 1) * scale
-    sleep_for = max(expires_at - now, 0)
-    :timer.sleep(sleep_for)
   end
 
   @impl GenServer

@@ -10,13 +10,13 @@ defmodule Hammer.ETSTest do
     :ok
   end
 
-  describe "check_rate" do
+  describe "hit" do
     test "returns {:allow, 1} tuple on first access" do
       key = "key"
       scale = :timer.seconds(10)
       limit = 10
 
-      assert {:allow, 1} = RateLimit.check_rate(key, scale, limit)
+      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
     end
 
     test "returns {:allow, 4} tuple on in-limit checks" do
@@ -24,10 +24,10 @@ defmodule Hammer.ETSTest do
       scale = :timer.minutes(10)
       limit = 10
 
-      assert {:allow, 1} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 2} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 3} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 4} = RateLimit.check_rate(key, scale, limit)
+      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 2} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 3} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 4} = RateLimit.hit(key, scale, limit)
     end
 
     test "returns expected tuples on mix of in-limit and out-of-limit checks" do
@@ -35,10 +35,10 @@ defmodule Hammer.ETSTest do
       scale = :timer.minutes(10)
       limit = 2
 
-      assert {:allow, 1} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 2} = RateLimit.check_rate(key, scale, limit)
-      assert {:deny, 2} = RateLimit.check_rate(key, scale, limit)
-      assert {:deny, 2} = RateLimit.check_rate(key, scale, limit)
+      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 2} = RateLimit.hit(key, scale, limit)
+      assert {:deny, _wait} = RateLimit.hit(key, scale, limit)
+      assert {:deny, _wait} = RateLimit.hit(key, scale, limit)
     end
 
     test "returns expected tuples after waiting for the next window" do
@@ -46,15 +46,15 @@ defmodule Hammer.ETSTest do
       scale = 100
       limit = 2
 
-      assert {:allow, 1} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 2} = RateLimit.check_rate(key, scale, limit)
-      assert {:deny, 2} = RateLimit.check_rate(key, scale, limit)
+      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 2} = RateLimit.hit(key, scale, limit)
+      assert {:deny, wait} = RateLimit.hit(key, scale, limit)
 
-      assert :ok = RateLimit.wait(scale)
+      :timer.sleep(wait)
 
-      assert {:allow, 1} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 2} = RateLimit.check_rate(key, scale, limit)
-      assert {:deny, 2} = RateLimit.check_rate(key, scale, limit)
+      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 2} = RateLimit.hit(key, scale, limit)
+      assert {:deny, _wait} = RateLimit.hit(key, scale, limit)
     end
 
     test "with custom increment" do
@@ -62,9 +62,9 @@ defmodule Hammer.ETSTest do
       scale = :timer.seconds(1)
       limit = 10
 
-      assert {:allow, 4} = RateLimit.check_rate(key, scale, limit, 4)
-      assert {:allow, 9} = RateLimit.check_rate(key, scale, limit, 5)
-      assert {:deny, 10} = RateLimit.check_rate(key, scale, limit, 3)
+      assert {:allow, 4} = RateLimit.hit(key, scale, limit, 4)
+      assert {:allow, 9} = RateLimit.hit(key, scale, limit, 5)
+      assert {:deny, _wait} = RateLimit.hit(key, scale, limit, 3)
     end
 
     test "mixing default and custom increment" do
@@ -72,32 +72,32 @@ defmodule Hammer.ETSTest do
       scale = :timer.seconds(1)
       limit = 10
 
-      assert {:allow, 3} = RateLimit.check_rate(key, scale, limit, 3)
-      assert {:allow, 4} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 5} = RateLimit.check_rate(key, scale, limit)
-      assert {:allow, 9} = RateLimit.check_rate(key, scale, limit, 4)
-      assert {:allow, 10} = RateLimit.check_rate(key, scale, limit)
-      assert {:deny, 10} = RateLimit.check_rate(key, scale, limit, 2)
+      assert {:allow, 3} = RateLimit.hit(key, scale, limit, 3)
+      assert {:allow, 4} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 5} = RateLimit.hit(key, scale, limit)
+      assert {:allow, 9} = RateLimit.hit(key, scale, limit, 4)
+      assert {:allow, 10} = RateLimit.hit(key, scale, limit)
+      assert {:deny, _wait} = RateLimit.hit(key, scale, limit, 2)
     end
   end
 
-  describe "hit" do
+  describe "inc" do
     test "increments the count for the given key and scale" do
       key = "key"
       scale = :timer.seconds(10)
 
       assert RateLimit.get(key, scale) == 0
 
-      assert RateLimit.hit(key, scale) == 1
+      assert RateLimit.inc(key, scale) == 1
       assert RateLimit.get(key, scale) == 1
 
-      assert RateLimit.hit(key, scale) == 2
+      assert RateLimit.inc(key, scale) == 2
       assert RateLimit.get(key, scale) == 2
 
-      assert RateLimit.hit(key, scale) == 3
+      assert RateLimit.inc(key, scale) == 3
       assert RateLimit.get(key, scale) == 3
 
-      assert RateLimit.hit(key, scale) == 4
+      assert RateLimit.inc(key, scale) == 4
       assert RateLimit.get(key, scale) == 4
     end
   end
@@ -141,12 +141,11 @@ defmodule Hammer.ETSTest do
     scale = 100
     count = 10
 
-    assert {:allow, 1} = CleanRateLimit.check_rate(key, scale, count)
+    assert {:allow, 1} = CleanRateLimit.hit(key, scale, count)
 
     assert [_] = :ets.tab2list(CleanRateLimit)
 
-    CleanRateLimit.wait(scale)
-    CleanRateLimit.wait(scale)
+    :timer.sleep(150)
 
     assert :ets.tab2list(CleanRateLimit) == []
   end

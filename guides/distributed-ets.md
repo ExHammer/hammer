@@ -1,6 +1,6 @@
 # Distributed Rate Limiter with ETS Backend
 
-The example implements a distributed, eventually consistent rate limiter using Phoenix.PubSub for broadcasting each hit across nodes and a local ETS backend to manage rate-limiting counters. This setup is useful when you need to limit the number of actions (e.g., requests) across multiple nodes in a cluster.
+This example implements a distributed, eventually consistent rate limiter using Phoenix.PubSub for broadcasting each hit across nodes and a local ETS backend to manage rate-limiting counters. This setup is useful when you need to limit the number of actions (e.g., requests) across multiple nodes in a cluster.
 
 Based on [HexpmWeb.RateLimitPubSub.](https://github.com/hexpm/hexpm/blob/main/lib/hexpm_web/rate_limit_pub_sub.ex)
 
@@ -14,10 +14,10 @@ defmodule MyApp.RateLimit do
   broadcasting mechanism to keep counters in sync across nodes in a cluster.
   """
 
-  # Records a hit locally and broadcasts it to other nodes to synchronize.
+  # Checks rate locally and broadcasts the hit to other nodes to synchronize.
   def hit(key, scale, limit, increment \\ 1) do
-    :ok = broadcast({:hit, key, scale, increment})
-    Local.hit(key, scale, increment)
+    :ok = broadcast({:inc, key, scale, increment})
+    Local.hit(key, scale, limit, increment)
   end
 
   defmodule Local do
@@ -31,7 +31,7 @@ defmodule MyApp.RateLimit do
     use GenServer
 
     # Starts the listener process, subscribing to the specified PubSub topic.
-    # This process will listen for `:hit` messages to keep local counters in sync.
+    # This process will listen for `:inc` messages to keep local counters in sync.
 
     @doc false
     def start_link(opts) do
@@ -44,12 +44,12 @@ defmodule MyApp.RateLimit do
     def init({pubsub, topic}) do
       :ok = Phoenix.PubSub.subscribe(pubsub, topic)
       {:ok, []}
-    end    
+    end
 
-    # Handles remote `:hit` messages by updating the local counter.
+    # Handles remote `:inc` messages by updating the local counter.
 
     @impl true
-    def handle_info({:hit, key, scale, increment}, state) do      
+    def handle_info({:inc, key, scale, increment}, state) do      
       _count = Local.inc(key, scale, increment)
       {:noreply, state}
     end
@@ -72,7 +72,7 @@ defmodule MyApp.RateLimit do
     }
   end
 
-  # Wraps the local Hammer counter and the listener processes under a signle supervisor.
+  # Wraps the local Hammer counter and the listener processes under a single supervisor.
   def start_link(opts) do
     children = [{Local, opts}, {Listener, pubsub: @pubsub, topic: @topic}]
     Supervisor.start_link(children, strategy: :one_for_one)

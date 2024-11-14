@@ -12,13 +12,7 @@ defmodule Hammer do
       MyApp.RateLimit.start_link(clean_period: :timer.minutes(10))
 
       # Check the rate limit allowing 10 requests per second
-      MyApp.RateLimit.check_rate("some-key", _scale = :timer.seconds(1), _limit = 10)
-
-      # Wait for the next window
-      MyApp.RateLimit.wait(_scale = :timer.seconds(1))
-
-      # Reset the rate limiter
-      MyApp.RateLimit.reset("some-key", _scale = :timer.seconds(1))
+      MyApp.RateLimit.hit("some-key", _scale = :timer.seconds(1), _limit = 10)
 
   """
 

@@ -37,8 +37,8 @@ defmodule Hammer.ETSTest do
 
       assert {:allow, 1} = RateLimit.hit(key, scale, limit)
       assert {:allow, 2} = RateLimit.hit(key, scale, limit)
-      assert {:deny, _wait} = RateLimit.hit(key, scale, limit)
-      assert {:deny, _wait} = RateLimit.hit(key, scale, limit)
+      assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit)
+      assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit)
     end
 
     test "returns expected tuples after waiting for the next window" do
@@ -48,13 +48,13 @@ defmodule Hammer.ETSTest do
 
       assert {:allow, 1} = RateLimit.hit(key, scale, limit)
       assert {:allow, 2} = RateLimit.hit(key, scale, limit)
-      assert {:deny, wait} = RateLimit.hit(key, scale, limit)
+      assert {:deny, retry_after} = RateLimit.hit(key, scale, limit)
 
-      :timer.sleep(wait)
+      :timer.sleep(retry_after)
 
       assert {:allow, 1} = RateLimit.hit(key, scale, limit)
       assert {:allow, 2} = RateLimit.hit(key, scale, limit)
-      assert {:deny, _wait} = RateLimit.hit(key, scale, limit)
+      assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit)
     end
 
     test "with custom increment" do
@@ -64,7 +64,7 @@ defmodule Hammer.ETSTest do
 
       assert {:allow, 4} = RateLimit.hit(key, scale, limit, 4)
       assert {:allow, 9} = RateLimit.hit(key, scale, limit, 5)
-      assert {:deny, _wait} = RateLimit.hit(key, scale, limit, 3)
+      assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit, 3)
     end
 
     test "mixing default and custom increment" do
@@ -77,7 +77,7 @@ defmodule Hammer.ETSTest do
       assert {:allow, 5} = RateLimit.hit(key, scale, limit)
       assert {:allow, 9} = RateLimit.hit(key, scale, limit, 4)
       assert {:allow, 10} = RateLimit.hit(key, scale, limit)
-      assert {:deny, _wait} = RateLimit.hit(key, scale, limit, 2)
+      assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit, 2)
     end
   end
 

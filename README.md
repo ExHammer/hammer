@@ -49,9 +49,9 @@ case MyApp.RateLimit.hit(key, scale, limit) do
     # upload the video
     :ok
 
-  {:deny, wait} ->
+  {:deny, retry_after} ->
     # deny the request
-    {:error, :rate_limit, _message = "try again in #{wait}ms"}
+    {:error, :rate_limit, _message = "try again in #{retry_after}ms"}
 end
 ```
 

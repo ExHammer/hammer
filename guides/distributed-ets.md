@@ -83,3 +83,4 @@ end
 To be covered:
 - new nodes joining have empty counters
 - net split recovery
+- dns_cluster

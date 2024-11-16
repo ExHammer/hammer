@@ -57,13 +57,13 @@ end
 
 ## Available Backends
 
-- [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) (default)
+- [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) (default, can be [distributed](./guides/distributed-ets.md))
 - [Hammer.Redis](https://github.com/ExHammer/hammer-backend-redis)
-- [Hammer.Mnesia](https://github.com/ExHammer/hammer-backend-mnesia) (beta)
+- [Hammer.Mnesia](https://github.com/ExHammer/hammer-backend-mnesia)
 
 ## Acknowledgements
 
-Hammer was inspired by the [ExRated](https://github.com/grempe/ex_rated) library, by [grempe](https://github.com/grempe).
+Hammer was originally inspired by the [ExRated](https://github.com/grempe/ex_rated) library, by [grempe](https://github.com/grempe).
 
 ## License
 

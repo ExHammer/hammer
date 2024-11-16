@@ -62,8 +62,8 @@ defmodule Hammer.ETS do
   Starts the process that creates and cleans the ETS table.
 
   Accepts the following options:
-    - some `GenServer.options()`
     - `:clean_period` for how often to perform garbage collection
+    - optional `:debug`, `:spawn_opts`, and `:hibernate_after` `GenServer.options()`
   """
   @spec start_link([start_option]) :: GenServer.on_start()
   def start_link(opts) do
@@ -118,12 +118,12 @@ defmodule Hammer.ETS do
   def init(opts) do
     clean_period = Keyword.fetch!(opts, :clean_period)
     table = Keyword.fetch!(opts, :table)
-    {:continue, {:init, %{table: table, clean_period: clean_period}}
+    {:ok, %{table: table, clean_period: clean_period}, {:continue, :init}}
   end
 
-  # TODO retry and log errors
   @impl GenServer
   def handle_continue(:init, state) do
+    # TODO retry and log errors
     :ets.new(state.table, [
       :named_table,
       :set,
@@ -134,7 +134,7 @@ defmodule Hammer.ETS do
     ])
 
     schedule(state.clean_period)
-    {:ok, state}
+    {:noreply, state}
   end
 
   @impl GenServer

@@ -2,7 +2,7 @@ defmodule Hammer do
   @moduledoc """
   Hammer is a rate-limiting library for Elixir.
 
-  It provides a simple API for creating rate limiters, and comes with a built-in ETS backend.
+  It provides a simple way for creating rate limiters, and comes with a built-in ETS backend.
 
       defmodule MyApp.RateLimit do
         use Hammer, backend: :ets
@@ -22,11 +22,56 @@ defmodule Hammer do
   @type count :: pos_integer
   @type increment :: non_neg_integer
 
+  @doc """
+  Same as `hit/4` with `increment` set to 1.
+  """
+  @callback hit(key, scale, limit) :: {:allow, count} | {:deny, timeout}
+
+  @doc """
+  Checks if a key is allowed to perform an action, and increment the counter.
+
+  Returns `{:allow, count}` if the action is allowed, or `{:deny, timeout}` if the action is denied.
+
+  This is the only required callback.
+  """
   @callback hit(key, scale, limit, increment) :: {:allow, count} | {:deny, timeout}
+
+  @doc """
+  Same as `inc/3` with `increment` set to 1.
+  """
+  @callback inc(key, scale) :: count
+
+  @doc """
+  Optional callback for incrementing a counter value for a kit without performing limit check.
+
+  Returns the new counter value.
+  """
   @callback inc(key, scale, increment) :: count
+
+  @doc """
+  Optional callback for setting the counter value for a key.
+
+  Returns the new counter value.
+  """
   @callback set(key, scale, count) :: count
+
+  @doc """
+  Optional callback for getting the counter value for a key.
+
+  Returns the current counter value.
+  """
   @callback get(key, scale) :: count
 
+  @optional_callbacks inc: 2, inc: 3, set: 3, get: 2
+
+  @doc """
+  Use the Hammer library in a module to create a rate limiter.
+
+      defmodule MyApp.RateLimit do
+        use Hammer, backend: :ets
+      end
+
+  """
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @behaviour Hammer
@@ -43,8 +88,6 @@ defmodule Hammer do
       # this allows :ets to be aliased to Hammer.ETS
       backend = with :ets <- backend, do: Hammer.ETS
       @before_compile backend
-
-      def reset(key, scale), do: set(key, scale, 0)
     end
   end
 end

@@ -2,39 +2,32 @@ defmodule Hammer.ETS do
   @moduledoc """
   An ETS backend for Hammer.
 
+  To use the ETS backend, you need to start the process that creates and cleans the ETS table. The table is named after the module.
+
       defmodule MyApp.RateLimit do
-        use Hammer, backend: :ets, table: MyApp.RateLimit
+        use Hammer, backend: :ets
       end
 
-      MyApp.RateLimit.start_link(clean_period: :timer.minutes(10))
-
-  Compile-time configuration:
-  - `:table` - (atom) name of the ETS table, defaults to the module name that called `use Hammer`
+      MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
 
   Runtime configuration:
-  - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 10 minutes
+  - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 1 minute
   """
 
   use GenServer
+  require Logger
 
-  defmacro __before_compile__(%{module: module} = _env) do
-    hammer_opts = Module.get_attribute(module, :hammer_opts)
-    table = Keyword.get(hammer_opts, :table, module)
-
+  defmacro __before_compile__(_env) do
     quote do
-      @table unquote(table)
+      @table __MODULE__
 
       def child_spec(opts) do
-        %{
-          id: unquote(module),
-          start: {unquote(module), :start_link, [opts]},
-          type: :worker
-        }
+        %{id: __MODULE__, start: {__MODULE__, :start_link, [opts]}, type: :worker}
       end
 
       def start_link(opts) do
         opts = Keyword.put(opts, :table, @table)
-        opts = Keyword.put_new(opts, :clean_period, :timer.minutes(10))
+        opts = Keyword.put_new(opts, :clean_period, :timer.minutes(1))
         Hammer.ETS.start_link(opts)
       end
 
@@ -63,12 +56,28 @@ defmodule Hammer.ETS do
 
   Accepts the following options:
     - `:clean_period` for how often to perform garbage collection
-    - optional `:debug`, `:spawn_opts`, and `:hibernate_after` `GenServer.options()`
+    - optional `:debug`, `:spawn_opts`, and `:hibernate_after` GenServer options
   """
   @spec start_link([start_option]) :: GenServer.on_start()
   def start_link(opts) do
     {gen_opts, opts} = Keyword.split(opts, [:debug, :spawn_opt, :hibernate_after])
-    GenServer.start_link(__MODULE__, opts, gen_opts)
+
+    {clean_period, opts} = Keyword.pop!(opts, :clean_period)
+    {table, opts} = Keyword.pop!(opts, :table)
+
+    case opts do
+      [] ->
+        :ok
+
+      # TODO move to macro?
+      _ ->
+        Logger.warning(
+          "Unrecognized options passed to #{inspect(table)}.start_link/1: #{inspect(opts)}"
+        )
+    end
+
+    config = %{table: table, clean_period: clean_period}
+    GenServer.start_link(__MODULE__, config, gen_opts)
   end
 
   @doc false
@@ -77,13 +86,12 @@ defmodule Hammer.ETS do
     window = div(now, scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
-    count = :ets.update_counter(table, full_key, increment, {full_key, 0, expires_at})
+    count = update_counter(table, full_key, increment, expires_at)
 
     if count <= limit do
       {:allow, count}
     else
-      until_next_window = max(expires_at - now, 0)
-      {:deny, until_next_window}
+      {:deny, expires_at - now}
     end
   end
 
@@ -92,7 +100,7 @@ defmodule Hammer.ETS do
     window = div(now(), scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
-    :ets.update_counter(table, full_key, increment, {full_key, 0, expires_at})
+    update_counter(table, full_key, increment, expires_at)
   end
 
   @doc false
@@ -100,7 +108,7 @@ defmodule Hammer.ETS do
     window = div(now(), scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
-    :ets.update_counter(table, full_key, {2, 1, 0, count}, {full_key, 0, expires_at})
+    update_counter(table, full_key, {2, 1, 0, count}, expires_at)
   end
 
   @doc false
@@ -114,17 +122,19 @@ defmodule Hammer.ETS do
     end
   end
 
-  @impl GenServer
-  def init(opts) do
-    clean_period = Keyword.fetch!(opts, :clean_period)
-    table = Keyword.fetch!(opts, :table)
-    {:ok, %{table: table, clean_period: clean_period}, {:continue, :init}}
+  @compile inline: [update_counter: 4]
+  defp update_counter(table, key, op, expires_at) do
+    :ets.update_counter(table, key, op, {key, 0, expires_at})
+  end
+
+  @compile inline: [now: 0]
+  defp now do
+    System.system_time(:millisecond)
   end
 
   @impl GenServer
-  def handle_continue(:init, state) do
-    # TODO retry and log errors
-    :ets.new(state.table, [
+  def init(config) do
+    :ets.new(config.table, [
       :named_table,
       :set,
       :public,
@@ -133,15 +143,15 @@ defmodule Hammer.ETS do
       {:decentralized_counters, true}
     ])
 
-    schedule(state.clean_period)
-    {:noreply, state}
+    schedule(config.clean_period)
+    {:ok, config}
   end
 
   @impl GenServer
-  def handle_info(:clean, state) do
-    clean(state.table)
-    schedule(state.clean_period)
-    {:noreply, state}
+  def handle_info(:clean, config) do
+    clean(config.table)
+    schedule(config.clean_period)
+    {:noreply, config}
   end
 
   defp schedule(clean_period) do
@@ -151,10 +161,5 @@ defmodule Hammer.ETS do
   defp clean(table) do
     ms = [{{{:_, :_}, :_, :"$1"}, [], [{:<, :"$1", {:const, now()}}]}]
     :ets.select_delete(table, ms)
-  end
-
-  @compile inline: [now: 0]
-  defp now do
-    System.system_time(:millisecond)
   end
 end

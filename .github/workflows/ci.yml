@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
 
     env:
       MIX_ENV: test
@@ -15,18 +15,21 @@ jobs:
     strategy:
       # https://hexdocs.pm/elixir/compatibility-and-deprecations.html#between-elixir-and-erlang-otp
       matrix:
-        elixir: [1.16, 1.15, 1.14, 1.13]
-        otp: [26, 25, 24, 23]
+        os: [ubuntu-22.04, ubuntu-24.04]
+        elixir: [1.17, 1.16, 1.15, 1.14]
+        otp: [27, 26, 25]
         include:
           - elixir: 1.17
             otp: 27
         exclude:
-          - elixir: 1.15
-            otp: 23
-          - elixir: 1.16
-            otp: 23
           - elixir: 1.13
             otp: 26
+          - elixir: 1.14
+            otp: 27
+          - elixir: 1.15
+            otp: 27
+          - elixir: 1.16
+            otp: 27
 
     steps:
       - uses: actions/checkout@v4

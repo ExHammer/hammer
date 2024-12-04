@@ -97,6 +97,63 @@ case MyApp.RateLimit.hit(key, scale, limit, number_of_files) do
   {:deny, _ms_until_next_window} -> # deny the request
 end
 ```
+## Using Hammer as a Plug in Phoenix
+
+you can easily use Hammer as a plug by using the controller plug in Phoenix:
+
+```elixir
+plug :rate_limit_videos when action in ...
+
+defp rate_limit_videos(conn, _opts) do
+  user_id = conn.assigns.current_user.id
+  key = "videos:#{user_id}"
+  scale = :timer.minutes(1)
+  limit = 10
+
+  case MyApp.RateLimit.hit(key, scale, limit) do
+    {:allow, _count} ->
+      conn
+
+    {:deny, retry_after} ->
+      conn
+      |> put_resp_header("retry-after", Integer.to_string(div(retry_after, 1000)))
+      |> send_resp(429, [])
+      |> halt()
+  end
+end
+```
+
+Or you could add it to your endpoint:
+
+```elixir
+defmodule MyAppWeb.Endpoint do
+  use Phoenix.Endpoint
+
+  plug RemoteIP
+  plug :rate_limit
+
+  # ...
+
+  defp rate_limit(conn, _opts) do
+    key = "web_requests:#{:inet.ntoa(conn.remote_ip)}"
+    scale = :timer.minutes(1)
+    limit = 1000
+
+    case MyApp.RateLimit.hit(key, scale, limit) do
+      {:allow, _count} ->
+        conn
+
+      {:deny, retry_after} ->
+        retry_after_seconds = div(retry_after, 1000)
+
+        conn
+        |> put_resp_header("retry-after", Integer.to_string(retry_after_seconds))
+        |> send_resp(429, [])
+        |> halt()
+    end
+  end
+end
+```
 
 ## Using Hammer with Redis
 

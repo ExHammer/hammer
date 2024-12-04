@@ -25,8 +25,8 @@ defmodule Hammer.MixProject do
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test]},
-      {:ex_doc, "~> 0.30", only: :dev},
-      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 

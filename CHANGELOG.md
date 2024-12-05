@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.0.0 - 2024-12-04
+## 7.0.0-rc.0 - 2024-12-04
 
 - Breaking change. Completely new API. Consider upgrading if you are experiencing performance or usability problems with Hammer v6. See [./guides/upgrade-v7.md] for upgrade instructions. https://github.com/ExHammer/hammer/pull/104
 - Hammer.Plug has been removed. See documentation for using Hammer as a plug in Phoenix.

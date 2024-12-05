@@ -9,7 +9,7 @@ defmodule Hammer.MixProject do
       app: :hammer,
       description: "A rate-limiter with plugable backends.",
       version: @version,
-      elixir: "~> 1.15",
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),

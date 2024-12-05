@@ -69,7 +69,6 @@ defmodule Hammer.ETS do
       [] ->
         :ok
 
-      # TODO move to macro?
       _ ->
         Logger.warning(
           "Unrecognized options passed to #{inspect(table)}.start_link/1: #{inspect(opts)}"

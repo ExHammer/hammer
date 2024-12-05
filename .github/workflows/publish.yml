@@ -1,0 +1,18 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Publish package to hex.pm
+        uses: hipcall/github_action_publish_hex@v1
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}

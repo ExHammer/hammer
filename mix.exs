@@ -1,35 +1,32 @@
-defmodule Hammer.Mixfile do
+defmodule Hammer.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/ExHammer/hammer"
-  @version "6.2.1"
+  @version "7.0.0-rc.0"
 
   def project do
     [
       app: :hammer,
       description: "A rate-limiter with plugable backends.",
       version: @version,
-      elixir: "~> 1.13",
-      build_embedded: Mix.env() == :prod,
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),
       package: package(),
-      test_coverage: [summary: [threshold: 70]]
+      test_coverage: [summary: [threshold: 90]]
     ]
   end
 
   def application do
-    # Specify extra applications you'll use from Erlang/Elixir
-    [mod: {Hammer.Application, []}, extra_applications: [:logger, :runtime_tools]]
+    [extra_applications: [:logger]]
   end
 
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test]},
-      {:ex_doc, "~> 0.30", only: :dev},
-      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false},
-      {:poolboy, "~> 1.5"}
+      {:ex_doc, "~> 0.34", only: :dev},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -37,17 +34,12 @@ defmodule Hammer.Mixfile do
     [
       main: "readme",
       extra_section: "GUIDES",
-      extras: [
-        "CHANGELOG.md",
-        {:"README.md", title: "Readme"},
-        {:"guides/Frontpage.md", title: "Overview"},
-        "guides/Tutorial.md",
-        "guides/CreatingBackends.md"
-      ],
+      extras: ["CHANGELOG.md", "README.md"] ++ Path.wildcard("guides/*.md"),
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       source_url: @source_url,
       source_ref: "v#{@version}",
       homepage_url: @source_url,
-      assets: "assets"
+      assets: %{"assets" => "assets"}
     ]
   end
 

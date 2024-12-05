@@ -10,3 +10,4 @@ Thanks to our Contributors as well:
 - [Gary Rennie](https://github.com/Gazler)
 - [Ross Wilson](https://github.com/rosswilson)
 - [Emmanuel Pinault](https://github.com/epinault)
+- [ruslandoga](https://github.com/ruslandoga)

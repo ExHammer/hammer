@@ -8,6 +8,14 @@
 
 **Hammer** is a rate-limiter for Elixir with pluggable storage backends. Hammer enables users to set limits on actions performed within specified time intervals, applying per-user or global limits on API requests, file uploads, and more.
 
+---
+
+> [!NOTE]
+>
+> This README is for the unreleased master branch, please reference the [official documentation on hexdocs](https://hexdocs.pm/hammer) for the latest stable release.
+
+---
+
 ## Installation
 
 Hammer is [available in Hex](https://hex.pm/packages/hammer). Install by adding `:hammer` to your list of dependencies in `mix.exs`:

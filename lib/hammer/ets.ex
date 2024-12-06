@@ -31,18 +31,22 @@ defmodule Hammer.ETS do
         Hammer.ETS.start_link(opts)
       end
 
+      @impl Hammer
       def hit(key, scale, limit, increment \\ 1) do
         Hammer.ETS.hit(@table, key, scale, limit, increment)
       end
 
+      @impl Hammer
       def inc(key, scale, increment \\ 1) do
         Hammer.ETS.inc(@table, key, scale, increment)
       end
 
+      @impl Hammer
       def set(key, scale, count) do
         Hammer.ETS.set(@table, key, scale, count)
       end
 
+      @impl Hammer
       def get(key, scale) do
         Hammer.ETS.get(@table, key, scale)
       end
@@ -80,6 +84,13 @@ defmodule Hammer.ETS do
   end
 
   @doc false
+  @spec hit(
+          table :: atom(),
+          key :: String.t(),
+          scale :: integer(),
+          limit :: integer(),
+          increment :: integer()
+        ) :: {:allow, integer()} | {:deny, integer()}
   def hit(table, key, scale, limit, increment) do
     now = now()
     window = div(now, scale)
@@ -95,6 +106,8 @@ defmodule Hammer.ETS do
   end
 
   @doc false
+  @spec inc(table :: atom(), key :: String.t(), scale :: integer(), increment :: integer()) ::
+          integer()
   def inc(table, key, scale, increment) do
     window = div(now(), scale)
     full_key = {key, window}
@@ -103,6 +116,8 @@ defmodule Hammer.ETS do
   end
 
   @doc false
+  @spec set(table :: atom(), key :: String.t(), scale :: integer(), count :: integer()) ::
+          integer()
   def set(table, key, scale, count) do
     window = div(now(), scale)
     full_key = {key, window}
@@ -111,6 +126,7 @@ defmodule Hammer.ETS do
   end
 
   @doc false
+  @spec get(table :: atom(), key :: String.t(), scale :: integer()) :: integer()
   def get(table, key, scale) do
     window = div(now(), scale)
     full_key = {key, window}

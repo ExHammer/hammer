@@ -15,14 +15,13 @@ jobs:
     strategy:
       # https://hexdocs.pm/elixir/compatibility-and-deprecations.html#between-elixir-and-erlang-otp
       matrix:
-        elixir: [1.16, 1.15, 1.14]
+        elixir: [1.17, 1.16, 1.15]
         otp: [26, 25]
         include:
           - elixir: 1.17
             otp: 27
-        exclude:
           - elixir: 1.14
-            otp: 26
+            otp: 25
 
     steps:
       - uses: actions/checkout@v4

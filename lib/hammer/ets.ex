@@ -26,6 +26,7 @@ defmodule Hammer.ETS do
           | {:key_older_than, pos_integer()}
           | GenServer.option()
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defmacro __before_compile__(%{module: module}) do
     hammer_opts = Module.get_attribute(module, :hammer_opts)
 

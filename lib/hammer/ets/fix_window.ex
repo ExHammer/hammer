@@ -63,7 +63,7 @@ defmodule Hammer.ETS.FixWindow do
   alias Hammer.ETS
   @doc false
   @spec ets_opts() :: :ets.options()
-  def ets_opts() do
+  def ets_opts do
     [
       :named_table,
       :set,

@@ -70,7 +70,7 @@ defmodule Hammer.ETS.SlidingWindow do
 
   @doc false
   @spec ets_opts() :: :ets.options()
-  def ets_opts() do
+  def ets_opts do
     [
       :named_table,
       :set,
@@ -150,7 +150,7 @@ defmodule Hammer.ETS.SlidingWindow do
       }
     ]
 
-    :ets.select(table, match_spec) |> Enum.min()
+    table |> :ets.select(match_spec) |> Enum.min()
   end
 
   defp remove_old_entries_for_key(table, key, now) do

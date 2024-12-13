@@ -2,12 +2,18 @@
 
 ## 7.0.0-rc.1 - 2024-12-13
 
-- Breaking change. Completely new API. Consider upgrading if you are experiencing performance or usability problems with Hammer v6. See [./guides/upgrade-v7.md] for upgrade instructions. https://github.com/ExHammer/hammer/pull/104
+- Improved API a little more. Should be compatibe with previous RC
+  - Made ETS backend more flexible with `:algorithm` option
+  - Added `:key_older_than` option to the ETS backend
 - Added `:algorithm` option to the ETS backend with support for:
   - `:fix_window` (default) - Fixed time window rate limiting
   - `:sliding_window` - Sliding time window for smoother rate limiting
   - `:leaky_bucket` - Constant rate limiting with burst capacity
   - `:token_bucket` - Token-based rate limiting with burst capacity
+
+## 7.0.0-rc.0 - 2024-12-13
+
+- Breaking change. Completely new API. Consider upgrading if you are experiencing performance or usability problems with Hammer v6. See [./guides/upgrade-v7.md] for upgrade instructions. https://github.com/ExHammer/hammer/pull/104
 - Hammer.Plug has been removed. See documentation for using Hammer as a plug in Phoenix.
 
 ## 6.2.1 - 2024-02-23

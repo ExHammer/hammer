@@ -10,15 +10,7 @@ defmodule Hammer.ETSTest do
     :ok
   end
 
-  describe "hit" do
-    test "returns {:allow, 1} tuple on first access" do
-      key = "key"
-      scale = :timer.seconds(10)
-      limit = 10
-
-      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
-    end
-
+  describe "hit through actual RateLimit implementation" do
     test "returns {:allow, 4} tuple on in-limit checks" do
       key = "key"
       scale = :timer.minutes(10)
@@ -41,22 +33,6 @@ defmodule Hammer.ETSTest do
       assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit)
     end
 
-    test "returns expected tuples after waiting for the next window" do
-      key = "key"
-      scale = 100
-      limit = 2
-
-      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
-      assert {:allow, 2} = RateLimit.hit(key, scale, limit)
-      assert {:deny, retry_after} = RateLimit.hit(key, scale, limit)
-
-      :timer.sleep(retry_after)
-
-      assert {:allow, 1} = RateLimit.hit(key, scale, limit)
-      assert {:allow, 2} = RateLimit.hit(key, scale, limit)
-      assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit)
-    end
-
     test "with custom increment" do
       key = "cost-key"
       scale = :timer.seconds(1)
@@ -66,22 +42,9 @@ defmodule Hammer.ETSTest do
       assert {:allow, 9} = RateLimit.hit(key, scale, limit, 5)
       assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit, 3)
     end
-
-    test "mixing default and custom increment" do
-      key = "cost-key"
-      scale = :timer.seconds(1)
-      limit = 10
-
-      assert {:allow, 3} = RateLimit.hit(key, scale, limit, 3)
-      assert {:allow, 4} = RateLimit.hit(key, scale, limit)
-      assert {:allow, 5} = RateLimit.hit(key, scale, limit)
-      assert {:allow, 9} = RateLimit.hit(key, scale, limit, 4)
-      assert {:allow, 10} = RateLimit.hit(key, scale, limit)
-      assert {:deny, _retry_after} = RateLimit.hit(key, scale, limit, 2)
-    end
   end
 
-  describe "inc" do
+  describe "inc through actual RateLimit implementation" do
     test "increments the count for the given key and scale" do
       key = "key"
       scale = :timer.seconds(10)
@@ -102,7 +65,7 @@ defmodule Hammer.ETSTest do
     end
   end
 
-  describe "get/set" do
+  describe "get/set through actual RateLimit implementation" do
     test "get returns the count set for the given key and scale" do
       key = "key"
       scale = :timer.seconds(10)

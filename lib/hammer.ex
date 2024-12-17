@@ -87,7 +87,12 @@ defmodule Hammer do
           """
 
       # this allows :ets to be aliased to Hammer.ETS
-      backend = with :ets <- backend, do: Hammer.ETS
+      backend =
+        case backend do
+          :ets -> Hammer.ETS
+          :atomic -> Hammer.Atomic
+        end
+
       @before_compile backend
     end
   end

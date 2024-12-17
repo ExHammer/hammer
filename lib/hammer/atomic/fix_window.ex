@@ -1,4 +1,4 @@
-defmodule Hammer.ETS.FixWindow do
+defmodule Hammer.Atomic.FixWindow do
   @moduledoc """
   This module implements the Fix Window algorithm.
 
@@ -60,7 +60,7 @@ defmodule Hammer.ETS.FixWindow do
 
   This would run cleanup every 5 minutes and clean up old windows.
   """
-  alias Hammer.ETS
+  alias Hammer.Atomic
   @doc false
   @spec ets_opts() :: list()
   def ets_opts do
@@ -85,16 +85,25 @@ defmodule Hammer.ETS.FixWindow do
           increment :: pos_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, scale, limit, increment) do
-    now = ETS.now()
+    now = Atomic.now()
     window = div(now, scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
-    count = ETS.update_counter(table, full_key, increment, expires_at)
 
-    if count <= limit do
-      {:allow, count}
-    else
-      {:deny, expires_at - now}
+    case :ets.lookup(table, full_key) do
+      [{_, atomic}] ->
+        count = :atomics.add_get(atomic, 1, increment)
+        :atomics.exchange(atomic, 2, expires_at)
+
+        if count <= limit do
+          {:allow, count}
+        else
+          {:deny, expires_at - now}
+        end
+
+      [] ->
+        :ets.insert(table, {full_key, :atomics.new(2, signed: false)})
+        hit(table, key, scale, limit, increment)
     end
   end
 
@@ -109,22 +118,46 @@ defmodule Hammer.ETS.FixWindow do
         ) ::
           non_neg_integer()
   def inc(table, key, scale, increment) do
-    window = div(ETS.now(), scale)
+    window = div(Atomic.now(), scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
-    ETS.update_counter(table, full_key, increment, expires_at)
+
+    case :ets.lookup(table, full_key) do
+      [{_, atomic}] ->
+        :atomics.exchange(atomic, 2, expires_at)
+        :atomics.add_get(atomic, 1, increment)
+
+      [] ->
+        :ets.insert(table, {full_key, :atomics.new(2, signed: false)})
+        inc(table, key, scale, increment)
+    end
   end
 
   @doc """
   Sets the counter for a given key in the fixed window algorithm.
   """
-  @spec set(table :: atom(), key :: String.t(), scale :: pos_integer(), count :: pos_integer()) ::
-          integer()
+  @spec set(
+          table :: atom(),
+          key :: String.t(),
+          scale :: pos_integer(),
+          count :: non_neg_integer()
+        ) ::
+          non_neg_integer()
   def set(table, key, scale, count) do
-    window = div(ETS.now(), scale)
+    window = div(Atomic.now(), scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
-    ETS.update_counter(table, full_key, {2, 1, 0, count}, expires_at)
+
+    case :ets.lookup(table, full_key) do
+      [{_, atomic}] ->
+        :atomics.exchange(atomic, 2, expires_at)
+        :atomics.exchange(atomic, 1, count)
+        count
+
+      [] ->
+        :ets.insert(table, {full_key, :atomics.new(2, signed: false)})
+        set(table, key, scale, count)
+    end
   end
 
   @doc """
@@ -132,23 +165,12 @@ defmodule Hammer.ETS.FixWindow do
   """
   @spec get(table :: atom(), key :: String.t(), scale :: pos_integer()) :: non_neg_integer()
   def get(table, key, scale) do
-    window = div(ETS.now(), scale)
+    window = div(Atomic.now(), scale)
     full_key = {key, window}
 
     case :ets.lookup(table, full_key) do
-      [{_full_key, count, _expires_at}] -> count
+      [{_, atomic}] -> :atomics.get(atomic, 1)
       [] -> 0
     end
-  end
-
-  @doc """
-  Cleans up all of the old entries from the table.
-  """
-  @spec clean(config :: ETS.config()) :: non_neg_integer()
-  def clean(config) do
-    table = config.table
-
-    match_spec = [{{{:_, :_}, :_, :"$1"}, [], [{:<, :"$1", {:const, ETS.now()}}]}]
-    :ets.select_delete(table, match_spec)
   end
 end

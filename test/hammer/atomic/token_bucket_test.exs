@@ -1,13 +1,13 @@
-defmodule Hammer.ETS.TokenBucketTest do
+defmodule Hammer.Atomic.TokenBucketTest do
   use ExUnit.Case, async: true
-  alias Hammer.ETS.TokenBucket
+  alias Hammer.Atomic.TokenBucket
 
   defmodule RateLimitTokenBucket do
-    use Hammer, backend: :ets, algorithm: :token_bucket
+    use Hammer, backend: :atomic, algorithm: :token_bucket
   end
 
   setup do
-    table = :ets.new(:hammer_token_bucket_test, TokenBucket.ets_opts())
+    table = :ets.new(:hammer_atomic_token_bucket_test, TokenBucket.ets_opts())
     {:ok, table: table}
   end
 

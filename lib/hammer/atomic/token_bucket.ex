@@ -1,4 +1,4 @@
-defmodule Hammer.ETS.TokenBucket do
+defmodule Hammer.Atomic.TokenBucket do
   @moduledoc """
   This module implements the Token Bucket algorithm.
   The token bucket algorithm works by modeling a bucket that:
@@ -77,7 +77,6 @@ defmodule Hammer.ETS.TokenBucket do
   This would run cleanup every 5 minutes and remove buckets not used in 24 hours.
   """
 
-  alias Hammer.ETS
   @doc false
   @spec ets_opts() :: list()
   def ets_opts do
@@ -100,22 +99,35 @@ defmodule Hammer.ETS.TokenBucket do
           cost :: pos_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, refill_rate, capacity, cost \\ 1) do
+    # bucket window
     now = System.system_time(:second)
 
-    # Try to insert new empty bucket if doesn't exist
-    :ets.insert_new(table, {key, capacity, now})
+    case :ets.lookup(table, key) do
+      [{_, atomic}] ->
+        # Get current bucket state
+        current_fill = :atomics.get(atomic, 1)
+        last_update = :atomics.get(atomic, 2)
 
-    [{^key, current_level, last_update}] = :ets.lookup(table, key)
-    new_tokens = trunc((now - last_update) * refill_rate)
+        new_tokens = trunc((now - last_update) * refill_rate)
 
-    current_tokens = min(capacity, current_level + new_tokens)
+        current_tokens = min(capacity, current_fill + new_tokens)
 
-    if current_tokens >= 1 do
-      final_level = current_tokens - cost
-      :ets.insert(table, {key, final_level, now})
-      {:allow, final_level}
-    else
-      {:deny, 1000}
+        if current_tokens >= 1 do
+          final_level = current_tokens - cost
+
+          :atomics.exchange(atomic, 1, final_level)
+          :atomics.exchange(atomic, 2, now)
+
+          {:allow, final_level}
+        else
+          {:deny, 1000}
+        end
+
+      [] ->
+        atomic = :atomics.new(2, signed: false)
+        :ets.insert(table, {key, atomic})
+        :atomics.exchange(atomic, 1, capacity)
+        hit(table, key, refill_rate, capacity, cost)
     end
   end
 
@@ -128,23 +140,11 @@ defmodule Hammer.ETS.TokenBucket do
       [] ->
         0
 
-      [{^key, level, _last_update}] ->
-        level
+      [{_, atomic}] ->
+        :atomics.get(atomic, 1)
 
       _ ->
         0
     end
-  end
-
-  @doc """
-  Cleans up all of the old entries from the table based on the `key_older_than` option.
-  """
-  @spec clean(config :: ETS.config()) :: non_neg_integer()
-  def clean(config) do
-    now = ETS.now()
-    older_than = now - config.key_older_than
-
-    match_spec = [{{:_, :_, :"$1"}, [], [{:<, :"$1", {:const, older_than}}]}]
-    :ets.select_delete(config.table, match_spec)
   end
 end

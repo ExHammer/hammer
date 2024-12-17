@@ -1,4 +1,4 @@
-defmodule Hammer.ETS.LeakyBucket do
+defmodule Hammer.Atomic.LeakyBucket do
   @moduledoc """
   This module implements the Leaky Bucket algorithm.
 
@@ -73,7 +73,6 @@ defmodule Hammer.ETS.LeakyBucket do
 
   This would run cleanup every 5 minutes and remove buckets not used in 24 hours.
   """
-  alias Hammer.ETS
 
   @doc false
   @spec ets_opts() :: list()
@@ -99,26 +98,34 @@ defmodule Hammer.ETS.LeakyBucket do
           cost :: pos_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, leak_rate, capacity, cost) do
+    # bucket window
     now = System.system_time(:second)
 
-    # Try to insert new empty bucket if doesn't exist
-    :ets.insert_new(table, {key, 0, now})
+    case :ets.lookup(table, key) do
+      [{_, atomic}] ->
+        # Get current bucket state
+        current_fill = :atomics.get(atomic, 1)
+        last_update = :atomics.get(atomic, 2)
 
-    # Get current bucket state
-    [{^key, current_fill, last_update}] = :ets.lookup(table, key)
+        leaked = trunc((now - last_update) * leak_rate)
 
-    leaked = trunc((now - last_update) * leak_rate)
+        # Subtract leakage from current level (don't go below 0)
+        current_fill = max(0, current_fill - leaked)
 
-    # Subtract leakage from current level (don't go below 0)
-    current_fill = max(0, current_fill - leaked)
+        if current_fill < capacity do
+          final_level = current_fill + cost
 
-    if current_fill < capacity do
-      final_level = current_fill + cost
+          :atomics.exchange(atomic, 1, final_level)
+          :atomics.exchange(atomic, 2, now)
 
-      :ets.insert(table, {key, final_level, now})
-      {:allow, final_level}
-    else
-      {:deny, 1000}
+          {:allow, final_level}
+        else
+          {:deny, 1000}
+        end
+
+      [] ->
+        :ets.insert(table, {key, :atomics.new(2, signed: false)})
+        hit(table, key, leak_rate, capacity, cost)
     end
   end
 
@@ -131,23 +138,11 @@ defmodule Hammer.ETS.LeakyBucket do
       [] ->
         0
 
-      [{^key, level, _last_update}] ->
-        level
+      [{_, atomic}] ->
+        :atomics.get(atomic, 1)
 
       _ ->
         0
     end
-  end
-
-  @doc """
-  Cleans up all of the old entries from the table based on the `key_older_than` option.
-  """
-  @spec clean(config :: ETS.config()) :: non_neg_integer()
-  def clean(config) do
-    now = ETS.now()
-    older_than = now - config.key_older_than
-
-    match_spec = [{{:_, :_, :"$1"}, [], [{:<, :"$1", {:const, older_than}}]}]
-    :ets.select_delete(config.table, match_spec)
   end
 end

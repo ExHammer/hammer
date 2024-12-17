@@ -69,7 +69,7 @@ defmodule Hammer.ETS.SlidingWindow do
   alias Hammer.ETS.SlidingWindow
 
   @doc false
-  @spec ets_opts() :: :ets.options()
+  @spec ets_opts() :: list()
   def ets_opts do
     [
       :named_table,
@@ -87,9 +87,9 @@ defmodule Hammer.ETS.SlidingWindow do
   @spec hit(
           table :: atom(),
           key :: String.t(),
-          scale :: integer(),
-          limit :: integer()
-        ) :: {:allow, integer()} | {:deny, integer()}
+          scale :: pos_integer(),
+          limit :: pos_integer()
+        ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, scale, limit) do
     now = now()
 
@@ -115,7 +115,7 @@ defmodule Hammer.ETS.SlidingWindow do
   @doc """
   Returns the count of requests for a given key
   """
-  @spec get(table :: atom(), key :: String.t(), scale :: integer()) :: integer()
+  @spec get(table :: atom(), key :: String.t(), scale :: pos_integer()) :: non_neg_integer()
   def get(table, key, _scale) do
     now = now()
 
@@ -133,6 +133,7 @@ defmodule Hammer.ETS.SlidingWindow do
   @doc """
   Cleans up all of the old entries from the table based on the `key_older_than` option.
   """
+  @spec clean(config :: Hammer.ETS.config()) :: non_neg_integer()
   def clean(config) do
     now = now()
     table = config.table

@@ -1,19 +1,9 @@
-defmodule Hammer.ETS do
+defmodule Hammer.Atomic do
   @moduledoc """
-  An ETS backend for Hammer.
+  A rate limiter implementation using Erlang's :atomics module for atomic counters.
 
-  To use the ETS backend, you need to start the process that creates and cleans the ETS table. The table is named after the module.
-
-      defmodule MyApp.RateLimit do
-        use Hammer, backend: :ets
-      end
-
-      MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
-
-  Runtime configuration:
-  - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 1 minute
-  - `:key_older_than` - (in milliseconds) maximum age for entries before they are cleaned up, defaults to 1 hour
-  - `:algorithm` - the rate limiting algorithm to use, one of: `:fix_window`, `:sliding_window`, `:leaky_bucket`, `:token_bucket`. Defaults to `:fix_window`
+  This provides fast, atomic counter operations without the overhead of ETS or process messaging.
+  Requires Erlang/OTP 21.2 or later.
   """
 
   use GenServer
@@ -21,8 +11,6 @@ defmodule Hammer.ETS do
 
   @type start_option ::
           {:clean_period, pos_integer()}
-          | {:table, atom()}
-          | {:algorithm, module()}
           | {:key_older_than, pos_integer()}
           | GenServer.option()
 
@@ -41,31 +29,31 @@ defmodule Hammer.ETS do
     algorithm =
       case Keyword.get(hammer_opts, :algorithm) do
         nil ->
-          Hammer.ETS.FixWindow
+          Hammer.Atomic.FixWindow
 
-        :ets ->
-          Hammer.ETS.FixWindow
+        :atomic ->
+          Hammer.Atomic.FixWindow
 
         :fix_window ->
-          Hammer.ETS.FixWindow
+          Hammer.Atomic.FixWindow
 
         :sliding_window ->
-          Hammer.ETS.SlidingWindow
+          Hammer.Atomic.SlidingWindow
 
         :leaky_bucket ->
-          Hammer.ETS.LeakyBucket
+          Hammer.Atomic.LeakyBucket
 
         :token_bucket ->
-          Hammer.ETS.TokenBucket
+          Hammer.Atomic.TokenBucket
 
         _module ->
           raise ArgumentError, """
-          Hammer requires a valid backend to be specified. Must be one of: :ets,:fix_window, :sliding_window, :leaky_bucket, :token_bucket.
+          Hammer requires a valid backend to be specified. Must be one of: :atomic, :fix_window, :sliding_window, :leaky_bucket, :token_bucket.
           If none is specified, :fix_window is used.
 
           Example:
 
-            use Hammer, backend: :ets
+            use Hammer, backend: :atomic
           """
       end
 
@@ -83,7 +71,7 @@ defmodule Hammer.ETS do
         opts = Keyword.put(opts, :table, @table)
         opts = Keyword.put_new(opts, :clean_period, :timer.minutes(1))
         opts = Keyword.put_new(opts, :algorithm, @algorithm)
-        Hammer.ETS.start_link(opts)
+        Hammer.Atomic.start_link(opts)
       end
 
       if function_exported?(@algorithm, :hit, 4) do
@@ -125,15 +113,11 @@ defmodule Hammer.ETS do
   end
 
   @doc """
-  Starts the process that creates and cleans the ETS table.
+  Starts the atomic rate limiter process.
 
-  Accepts the following options:
-    - `:clean_period` - How often to run the cleanup process (in milliseconds). Defaults to 1 minute.
-    - `:key_older_than` - Optional maximum age for bucket entries (in milliseconds). Defaults to 24 hours.
-      Entries older than this will be removed during cleanup.
-    - `:algorithm` - The rate limiting algorithm to use. Can be `:fixed_window`, `:sliding_window`,
-      `:token_bucket`, or `:leaky_bucket`. Defaults to `:fixed_window`.
-    - optional `:debug`, `:spawn_opts`, and `:hibernate_after` GenServer options
+  Options:
+  - `:clean_period` - How often to run cleanup (ms). Default 1 minute.
+  - `:key_older_than` - Max age for entries (ms). Default 24 hours.
   """
   @spec start_link([start_option]) :: GenServer.on_start()
   def start_link(opts) do
@@ -150,7 +134,7 @@ defmodule Hammer.ETS do
 
       _ ->
         Logger.warning(
-          "Unrecognized options passed to #{inspect(table)}.start_link/1: #{inspect(opts)}"
+          "Unrecognized options passed to Hammer.Atomic.start_link/1: #{inspect(opts)}"
         )
     end
 
@@ -165,17 +149,6 @@ defmodule Hammer.ETS do
     GenServer.start_link(__MODULE__, config, gen_opts)
   end
 
-  @compile inline: [update_counter: 4]
-  def update_counter(table, key, op, expires_at) do
-    :ets.update_counter(table, key, op, {key, 0, expires_at})
-  end
-
-  @compile inline: [now: 0]
-  @spec now() :: pos_integer()
-  def now do
-    System.system_time(:millisecond)
-  end
-
   @impl GenServer
   def init(config) do
     :ets.new(config.table, config.table_opts)
@@ -184,12 +157,42 @@ defmodule Hammer.ETS do
     {:ok, config}
   end
 
+  @doc """
+  Returns the current time in milliseconds.
+  """
+  @spec now() :: pos_integer()
+  @compile inline: [now: 0]
+  def now do
+    System.system_time(:millisecond)
+  end
+
   @impl GenServer
   def handle_info(:clean, config) do
-    algorithm = config.algorithm
-    algorithm.clean(config)
+    clean(config)
+
     schedule(config.clean_period)
     {:noreply, config}
+  end
+
+  defp clean(config) do
+    table = config.table
+
+    now = now()
+
+    :ets.foldl(
+      fn {_key, atomic} = term, deleted ->
+        expires_at = :atomics.get(atomic, 2)
+
+        if now - expires_at > config.key_older_than do
+          :ets.delete_object(table, term)
+          deleted + 1
+        else
+          deleted
+        end
+      end,
+      0,
+      table
+    )
   end
 
   defp schedule(clean_period) do

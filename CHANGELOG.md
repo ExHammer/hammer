@@ -1,5 +1,15 @@
 # Changelog
 
+## 7.0.0-rc.2 - 2024-12-17
+
+- Fix type specs for ETS backends
+- Adds Atomic backends and possible algorithms
+- Added `:algorithm` option to the Atomic backend with support for:
+  - `:fix_window` (default) - Fixed time window rate limiting
+  - `:leaky_bucket` - Constant rate limiting with burst capacity
+  - `:token_bucket` - Token-based rate limiting with burst capacity
+- Add benchmarks file and run them with `bench`
+
 ## 7.0.0-rc.1 - 2024-12-13
 
 - Improved API a little more. Should be compatibe with previous RC

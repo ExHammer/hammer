@@ -27,10 +27,10 @@ defmodule Hammer.MixProject do
       {:benchee, "~> 1.2", only: :bench},
       {:credo, "~> 1.7", only: [:dev, :test]},
       {:ex_doc, "~> 0.34", only: :dev},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:ex_rated, "~> 2.1", only: :bench},
-      {:plug_attack, "~> 0.4.3", only: :bench},
-      {:rate_limiter, "~> 0.4.0", only: :bench}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      # {:ex_rated, "~> 2.1", only: :bench},
+      # {:plug_attack, "~> 0.4.3", only: :bench},
+      # {:rate_limiter, "~> 0.4.0", only: :bench}
     ]
   end
 

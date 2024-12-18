@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.0-rc.3 - 2024-12-18
+
+- Fix regression to support other backends
+
 ## 7.0.0-rc.2 - 2024-12-17
 
 - Fix type specs for ETS backends

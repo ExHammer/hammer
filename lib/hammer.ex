@@ -91,6 +91,7 @@ defmodule Hammer do
         case backend do
           :ets -> Hammer.ETS
           :atomic -> Hammer.Atomic
+          backend -> backend
         end
 
       @before_compile backend

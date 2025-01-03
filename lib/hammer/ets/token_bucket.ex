@@ -110,7 +110,7 @@ defmodule Hammer.ETS.TokenBucket do
 
     current_tokens = min(capacity, current_level + new_tokens)
 
-    if current_tokens >= 1 do
+    if current_tokens >= cost do
       final_level = current_tokens - cost
       :ets.insert(table, {key, final_level, now})
       {:allow, final_level}

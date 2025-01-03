@@ -112,7 +112,7 @@ defmodule Hammer.Atomic.TokenBucket do
 
         current_tokens = min(capacity, current_fill + new_tokens)
 
-        if current_tokens >= 1 do
+        if current_tokens >= cost do
           final_level = current_tokens - cost
 
           :atomics.exchange(atomic, 1, final_level)

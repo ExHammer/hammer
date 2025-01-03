@@ -62,6 +62,24 @@ defmodule Hammer.Atomic.TokenBucketTest do
       assert {:deny, _retry_after} =
                TokenBucket.hit(table, key, refill_rate, capacity, 1)
     end
+
+    test "handles costs greater than 1 correctly", %{table: table} do
+      key = "key"
+      refill_rate = 2
+      capacity = 10
+
+      # First hit with cost of 3 should succeed and leave 7 tokens
+      assert {:allow, 7} = TokenBucket.hit(table, key, refill_rate, capacity, 3)
+
+      # Second hit with cost of 4 should succeed and leave 3 tokens
+      assert {:allow, 3} = TokenBucket.hit(table, key, refill_rate, capacity, 4)
+
+      # Third hit with cost of 4 should be denied (only 3 tokens left)
+      assert {:deny, _retry_after} = TokenBucket.hit(table, key, refill_rate, capacity, 4)
+
+      # Small cost of 2 should still succeed since we have 3 tokens
+      assert {:allow, 1} = TokenBucket.hit(table, key, refill_rate, capacity, 2)
+    end
   end
 
   describe "get" do

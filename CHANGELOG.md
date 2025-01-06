@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.0-rc.4 - 2025-01-06
+
+- Fix Token bucket to respect custom cost
+
 ## 7.0.0-rc.3 - 2024-12-18
 
 - Fix regression to support other backends

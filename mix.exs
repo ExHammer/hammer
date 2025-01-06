@@ -2,7 +2,7 @@ defmodule Hammer.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/ExHammer/hammer"
-  @version "7.0.0-rc.3"
+  @version "7.0.0-rc.4"
 
   def project do
     [
@@ -28,6 +28,8 @@ defmodule Hammer.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test]},
       {:ex_doc, "~> 0.34", only: :dev},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+
+      # Keeping to perform benchmark test as needed at times
       # {:ex_rated, "~> 2.1", only: :bench},
       # {:plug_attack, "~> 0.4.3", only: :bench},
       # {:rate_limiter, "~> 0.4.0", only: :bench}

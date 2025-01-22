@@ -10,10 +10,23 @@ defmodule Hammer.ETS do
 
       MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
 
+      # Allow 10 requests per second
+      MyApp.RateLimit.hit("user_123", 1000, 10)
+
   Runtime configuration:
   - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 1 minute
   - `:key_older_than` - (in milliseconds) maximum age for entries before they are cleaned up, defaults to 1 hour
   - `:algorithm` - the rate limiting algorithm to use, one of: `:fix_window`, `:sliding_window`, `:leaky_bucket`, `:token_bucket`. Defaults to `:fix_window`
+
+  The ETS backend supports the following algorithms:
+    - `:fix_window` - Fixed window rate limiting (default)
+      Simple counting within fixed time windows. See [Hammer.ETS.FixWindow](Hammer.ETS.FixWindow.html) for more details.
+
+  - `:leaky_bucket` - Leaky bucket rate limiting
+    Smooth rate limiting with a fixed rate of tokens. See [Hammer.ETS.LeakyBucket](Hammer.ETS.LeakyBucket.html) for more details.
+
+  - `:token_bucket` - Token bucket rate limiting
+    Flexible rate limiting with bursting capability. See [Hammer.ETS.TokenBucket](Hammer.ETS.TokenBucket.html) for more details.
   """
 
   use GenServer

@@ -14,7 +14,7 @@ defmodule Hammer.Atomic.TokenBucket do
   - If bucket has enough tokens, request allowed and tokens consumed
   - If not enough tokens, request denied until bucket refills
 
-  The algorithm:
+  ## The algorithm:
   1. When a request comes in, we:
      - Calculate tokens added since last request based on time elapsed
      - Add new tokens to bucket (up to max capacity)
@@ -33,7 +33,7 @@ defmodule Hammer.Atomic.TokenBucket do
   - Need to support different costs for different operations
   - Want to avoid the sharp edges of fixed windows
 
-  Common use cases include:
+  ## Common use cases include:
 
   - API rate limiting with burst tolerance
   - Network traffic shaping
@@ -67,7 +67,9 @@ defmodule Hammer.Atomic.TokenBucket do
     If set, entries older than this will be removed during cleanup.
     This helps prevent memory growth from abandoned buckets.
 
-  Example configuration:
+  ## Example
+
+  ### Example configuration:
 
       MyApp.RateLimit.start_link(
         clean_period: :timer.minutes(5),
@@ -75,6 +77,17 @@ defmodule Hammer.Atomic.TokenBucket do
       )
 
   This would run cleanup every 5 minutes and remove buckets not used in 24 hours.
+
+  ### Example usage:
+
+      defmodule MyApp.RateLimit do
+        use Hammer, backend: :atomic, algorithm: :token_bucket
+      end
+
+      MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
+
+      # Allow 10 tokens per second with max capacity of 100
+      MyApp.RateLimit.hit("user_123", 10, 100, 1)
   """
 
   @doc false
@@ -90,7 +103,9 @@ defmodule Hammer.Atomic.TokenBucket do
     ]
   end
 
-  @doc false
+  @doc """
+  Checks if a key is allowed to perform an action, and consume the bucket by the given amount.
+  """
   @spec hit(
           table :: atom(),
           key :: String.t(),

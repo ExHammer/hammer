@@ -12,7 +12,7 @@ defmodule Hammer.ETS.SlidingWindow do
   - At time t+1, we look back 60 seconds from t+1, dropping any requests older than that
   - This creates a "sliding" effect where the window gradually moves forward in time
 
-  The algorithm:
+  ## The algorithm:
   1. When a request comes in, we store it with the current timestamp
   2. To check if rate limit is exceeded, we:
      - Count all requests within the last <scale> seconds
@@ -30,7 +30,7 @@ defmodule Hammer.ETS.SlidingWindow do
   - You can accept slightly higher storage overhead compared to fixed windows
   - You want to avoid sudden changes in allowed request rates
 
-  Common use cases include:
+  ## Common use cases include:
 
   - API rate limiting where consistent request rates are important
   - Financial transaction rate limiting
@@ -58,13 +58,25 @@ defmodule Hammer.ETS.SlidingWindow do
   - `:clean_period` - How often to run the cleanup process (in milliseconds)
     Defaults to 1 minute. The cleanup process removes expired window entries.
 
-  Example configuration:
+  ## Example
+  ### Example configuration:
 
       MyApp.RateLimit.start_link(
         clean_period: :timer.minutes(5),
       )
 
   This would run cleanup every 5 minutes and clean up old windows.
+
+  ### Example usage:
+
+      defmodule MyApp.RateLimit do
+        use Hammer, backend: :ets, algorithm: :sliding_window
+      end
+
+      MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
+
+      # Allow 10 requests in any 1 second window
+      MyApp.RateLimit.hit("user_123", 1000, 10)
   """
   alias Hammer.ETS.SlidingWindow
 

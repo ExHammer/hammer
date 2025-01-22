@@ -49,8 +49,13 @@ Each backend supports multiple algorithms. Not all of them are available for all
 | [Hammer.ETS.FixWindow](https://hexdocs.pm/hammer/Hammer.ETS.FixWindow.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
 | [Hammer.ETS.LeakyBucket](https://hexdocs.pm/hammer/Hammer.ETS.LeakyBucket.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
 | [Hammer.ETS.TokenBucket](https://hexdocs.pm/hammer/Hammer.ETS.TokenBucket.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
-| [Hammer.ETS.SlidingWindow](https://hexdocs.pm/hammer/Hammer.ETS.SlidingWindow.html) | [Hammer.Redis](https://hexdocs.pm/hammer/Hammer.ETS.html) |
-| [Hammer.Redis.FixedWindow](https://hexdocs.pm/hammer/Hammer.Redis.FixedWindow.html) | [Hammer.Redis](https://hexdocs.pm/hammer/Hammer.Redis.html) |
+| [Hammer.ETS.SlidingWindow](https://hexdocs.pm/hammer/Hammer.ETS.SlidingWindow.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
+| [Hammer.Redis.FixedWindow](https://hexdocs.pm/hammer_backend_redis/Hammer.Redis.FixedWindow.html) | [Hammer.Redis](https://hexdocs.pm/hammer_backend_redis/Hammer.Redis.html) |
+| [Hammer.Redis.LeakyBucket](https://hexdocs.pm/hammer_backend_redis/Hammer.Redis.LeakyBucket.html) | [Hammer.Redis](https://hexdocs.pm/hammer_backend_redis/Hammer.Redis.html) |
+| [Hammer.Redis.TokenBucket](https://hexdocs.pm/hammer_backend_redis/Hammer.Redis.TokenBucket.html) | [Hammer.Redis](https://hexdocs.pm/hammer_backend_redis/Hammer.Redis.html) |
+| [Hammer.Mnesia.FixedWindow](https://hexdocs.pm/hammer_backend_mnesia/Hammer.Mnesia.FixedWindow.html) | [Hammer.Mnesia](https://hexdocs.pm/hammer_backend_mnesia/Hammer.Mnesia.html) |
+| [Hammer.Mnesia.LeakyBucket](https://hexdocs.pm/hammer_backend_mnesia/Hammer.Mnesia.LeakyBucket.html) | [Hammer.Mnesia](https://hexdocs.pm/hammer_backend_mnesia/Hammer.Mnesia.html) |
+  | [Hammer.Mnesia.TokenBucket](https://hexdocs.pm/hammer_backend_mnesia/Hammer.Mnesia.TokenBucket.html) | [Hammer.Mnesia](https://hexdocs.pm/hammer_backend_mnesia/Hammer.Mnesia.html) |
 
 ## Default Algorithm
 
@@ -90,7 +95,12 @@ Selection Guide:
 - Need burst tolerance? → Token Bucket
 - Need precise limits? → Sliding Window
 
-## Creating a Rate Limiter
+## How to use Hammer
+
+- Basic usage is covered in the [Tutorial](https://hexdocs.pm/hammer/tutorial.html).
+- Distributed usage is covered in the [Distributed ETS](https://hexdocs.pm/hammer/distributed-ets.html) guide.
+
+## The quick start
 
 - **Limit:** Maximum number of actions allowed in a window.
 - **Scale:** Duration of the time window (in milliseconds).

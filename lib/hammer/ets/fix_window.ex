@@ -10,7 +10,7 @@ defmodule Hammer.ETS.FixWindow do
   - Window 2: 60-120 seconds
   - And so on...
 
-  The algorithm:
+  ## The algorithm:
   1. When a request comes in, we:
      - Calculate which window it belongs to based on current time
      - Increment the counter for that window
@@ -31,7 +31,7 @@ defmodule Hammer.ETS.FixWindow do
   - You want efficient implementation with minimal storage overhead
   - Your use case can tolerate potential bursts at window boundaries
 
-  Common use cases include:
+  ## Common use cases include:
 
   - Basic API rate limiting where occasional bursts are acceptable
   - Protecting backend services from excessive load
@@ -52,13 +52,25 @@ defmodule Hammer.ETS.FixWindow do
     Defaults to 1 minute. The cleanup process removes expired window entries.
 
 
-  Example configuration:
+  ## Example
+  ### Example configuration:
 
       MyApp.RateLimit.start_link(
         clean_period: :timer.minutes(5),
       )
 
   This would run cleanup every 5 minutes and clean up old windows.
+
+  ### Example usage:
+
+      defmodule MyApp.RateLimit do
+        use Hammer, backend: :ets, algorithm: :fix_window
+      end
+
+      MyApp.RateLimit.start_link(clean_period: :timer.minutes(1))
+
+      # Allow 10 requests per second
+      MyApp.RateLimit.hit("user_123", 1000, 10)
   """
   alias Hammer.ETS
   @doc false

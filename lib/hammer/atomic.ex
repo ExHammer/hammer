@@ -4,6 +4,17 @@ defmodule Hammer.Atomic do
 
   This provides fast, atomic counter operations without the overhead of ETS or process messaging.
   Requires Erlang/OTP 21.2 or later.
+
+  The atomic backend supports the following algorithms:
+
+  - `:fix_window` - Fixed window rate limiting (default)
+    Simple counting within fixed time windows. See [Hammer.Atomic.FixWindow](Hammer.Atomic.FixWindow.html) for more details.
+
+  - `:leaky_bucket` - Leaky bucket rate limiting
+    Smooth rate limiting with a fixed rate of tokens. See [Hammer.Atomic.LeakyBucket](Hammer.Atomic.LeakyBucket.html) for more details.
+
+  - `:token_bucket` - Token bucket rate limiting
+    Flexible rate limiting with bursting capability. See [Hammer.Atomic.TokenBucket](Hammer.Atomic.TokenBucket.html) for more details.
   """
 
   use GenServer

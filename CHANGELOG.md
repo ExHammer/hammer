@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.0 - 2025-02-06
+
+- Release candidate for 7.0.0. See [./guides/upgrade-v7.md] for upgrade instructions.
+
 ## 7.0.0-rc.4 - 2025-01-06
 
 - Fix Token bucket to respect custom cost

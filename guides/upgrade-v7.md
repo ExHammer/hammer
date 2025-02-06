@@ -52,9 +52,7 @@ end
 
 ## Change to Backend Configuration
 
-We have simplified the backend API. `Hammer.inc/4` combines the functionality of `Hammer.check_rate` and `Hammer.check_rate_inc` now.
-
-* Remapped all the  `Hammer.check_rate/3` and  `Hammer.check_rate/4` to `Hammer.inc/4`.
+* Remapped all the  `Hammer.check_rate/3` and  `Hammer.check_rate/4` to `Hammer.hit/4`.
 * Remapped all the  `Hammer.check_rate_inc/4` and  `Hammer.check_rate_inc/5` to `Hammer.inc/4`.
 * for the `Hammer.delete_buckets`, you need to remove them as there no true replacement. You could potentially use `Hammer.ETS.set/1` to reset specific key
 * for the `Hammer.make_rate_checker`, you need to remove them as there no replacement.

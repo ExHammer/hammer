@@ -64,6 +64,31 @@ defmodule Hammer.Atomic.LeakyBucketTest do
       assert {:deny, _retry_after} =
                LeakyBucket.hit(table, key, leak_rate, capacity, 1)
     end
+
+    test "race condition", %{table: table} do
+      key = "key"
+      leak_rate = 1
+      capacity = 4
+
+      # Start two processes
+      spawn_link(fn ->
+        for _ <- 1..2 do
+          LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+        end
+      end)
+
+      spawn_link(fn ->
+        for _ <- 1..2 do
+          LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+        end
+      end)
+
+      # Wait for both processes to finish
+      Process.sleep(100)
+
+      # Check the final count
+      assert LeakyBucket.get(table, key) == 4
+    end
   end
 
   describe "get" do

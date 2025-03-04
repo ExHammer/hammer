@@ -114,7 +114,7 @@ defmodule Hammer.Atomic.FixWindow do
         end
 
       [] ->
-        :ets.insert(table, {full_key, :atomics.new(2, signed: false)})
+        :ets.insert_new(table, {full_key, :atomics.new(2, signed: false)})
         hit(table, key, scale, limit, increment)
     end
   end

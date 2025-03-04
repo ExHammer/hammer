@@ -80,6 +80,31 @@ defmodule Hammer.Atomic.TokenBucketTest do
       # Small cost of 2 should still succeed since we have 3 tokens
       assert {:allow, 1} = TokenBucket.hit(table, key, refill_rate, capacity, 2)
     end
+
+    test "race condition", %{table: table} do
+      key = "key"
+      refill_rate = 1
+      capacity = 4
+
+      # Start two processes
+      spawn_link(fn ->
+        for _ <- 1..2 do
+          TokenBucket.hit(table, key, refill_rate, capacity, 1)
+        end
+      end)
+
+      spawn_link(fn ->
+        for _ <- 1..2 do
+          TokenBucket.hit(table, key, refill_rate, capacity, 1)
+        end
+      end)
+
+      # Wait for both processes to finish
+      Process.sleep(100)
+
+      # Check the final count
+      assert TokenBucket.get(table, key) == 0
+    end
   end
 
   describe "get" do

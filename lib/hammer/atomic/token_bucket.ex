@@ -140,8 +140,11 @@ defmodule Hammer.Atomic.TokenBucket do
 
       [] ->
         atomic = :atomics.new(2, signed: false)
-        :ets.insert(table, {key, atomic})
-        :atomics.exchange(atomic, 1, capacity)
+
+        if :ets.insert_new(table, {key, atomic}) do
+          :atomics.exchange(atomic, 1, capacity)
+        end
+
         hit(table, key, refill_rate, capacity, cost)
     end
   end

@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.0.1 - 2025-03-04
+
+- Fix race condition in Atomic backends during creation of key.
+
 ## 7.0.0 - 2025-02-06
 
 - Release candidate for 7.0.0. See [./guides/upgrade-v7.md] for upgrade instructions.

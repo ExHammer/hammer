@@ -77,6 +77,32 @@ defmodule Hammer.Atomic.FixWindowTest do
       assert {:allow, 10} = FixWindow.hit(table, key, scale, limit, 1)
       assert {:deny, _retry_after} = FixWindow.hit(table, key, scale, limit, 2)
     end
+
+    test "race condition", %{table: table} do
+      key = "key"
+      scale = :timer.seconds(1)
+      limit = 10
+
+      # Start two processes
+
+      spawn_link(fn ->
+        for _ <- 1..2 do
+          FixWindow.hit(table, key, scale, limit, 1)
+        end
+      end)
+
+      spawn_link(fn ->
+        for _ <- 1..2 do
+          FixWindow.hit(table, key, scale, limit, 1)
+        end
+      end)
+
+      # Wait for both processes to finish
+      Process.sleep(100)
+
+      # Check the final count
+      assert FixWindow.get(table, key, scale) == 4
+    end
   end
 
   describe "inc" do

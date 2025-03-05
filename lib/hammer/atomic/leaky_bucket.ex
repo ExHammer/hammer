@@ -136,7 +136,7 @@ defmodule Hammer.Atomic.LeakyBucket do
         end
 
       [] ->
-        :ets.insert(table, {key, :atomics.new(2, signed: false)})
+        :ets.insert_new(table, {key, :atomics.new(2, signed: false)})
         hit(table, key, leak_rate, capacity, cost)
     end
   end

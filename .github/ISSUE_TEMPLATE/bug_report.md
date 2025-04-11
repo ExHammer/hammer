@@ -12,6 +12,9 @@ A clear and concise description of what the bug is.
 
 ** Provide the following details
 
+- Version of the library: 
+- Backend used:
+- Algorithm used:
 - Elixir version (elixir -v):
 - Erlang version (erl -v):
 - Operating system:

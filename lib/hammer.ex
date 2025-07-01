@@ -43,7 +43,7 @@ defmodule Hammer do
   @callback inc(key, scale) :: count
 
   @doc """
-  Optional callback for incrementing a counter value for a kit without performing limit check.
+  Optional callback for incrementing a counter value for a key without performing limit check.
 
   Returns the new counter value.
   """

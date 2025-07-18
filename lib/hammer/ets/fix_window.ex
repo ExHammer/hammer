@@ -91,7 +91,7 @@ defmodule Hammer.ETS.FixWindow do
   """
   @spec hit(
           table :: atom(),
-          key :: String.t(),
+          key :: term(),
           scale :: pos_integer(),
           limit :: pos_integer(),
           increment :: pos_integer()
@@ -115,7 +115,7 @@ defmodule Hammer.ETS.FixWindow do
   """
   @spec inc(
           table :: atom(),
-          key :: String.t(),
+          key :: term(),
           scale :: pos_integer(),
           increment :: pos_integer()
         ) ::
@@ -130,7 +130,7 @@ defmodule Hammer.ETS.FixWindow do
   @doc """
   Sets the counter for a given key in the fixed window algorithm.
   """
-  @spec set(table :: atom(), key :: String.t(), scale :: pos_integer(), count :: pos_integer()) ::
+  @spec set(table :: atom(), key :: term(), scale :: pos_integer(), count :: pos_integer()) ::
           integer()
   def set(table, key, scale, count) do
     window = div(ETS.now(), scale)
@@ -142,7 +142,7 @@ defmodule Hammer.ETS.FixWindow do
   @doc """
   Returns the count of requests for a given key within the last <scale> seconds.
   """
-  @spec get(table :: atom(), key :: String.t(), scale :: pos_integer()) :: non_neg_integer()
+  @spec get(table :: atom(), key :: term(), scale :: pos_integer()) :: non_neg_integer()
   def get(table, key, scale) do
     window = div(ETS.now(), scale)
     full_key = {key, window}

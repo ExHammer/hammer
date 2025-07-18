@@ -91,7 +91,7 @@ defmodule Hammer.Atomic.FixWindow do
   """
   @spec hit(
           table :: atom(),
-          key :: String.t(),
+          key :: term(),
           scale :: pos_integer(),
           limit :: pos_integer(),
           increment :: pos_integer()
@@ -124,7 +124,7 @@ defmodule Hammer.Atomic.FixWindow do
   """
   @spec inc(
           table :: atom(),
-          key :: String.t(),
+          key :: term(),
           scale :: pos_integer(),
           increment :: pos_integer()
         ) ::
@@ -150,7 +150,7 @@ defmodule Hammer.Atomic.FixWindow do
   """
   @spec set(
           table :: atom(),
-          key :: String.t(),
+          key :: term(),
           scale :: pos_integer(),
           count :: non_neg_integer()
         ) ::

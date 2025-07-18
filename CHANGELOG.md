@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.0 - 2025-07-18
+
+- Minor version bump for feature updates
+
 ## 7.0.1 - 2025-03-04
 
 - Fix race condition in Atomic backends during creation of key.

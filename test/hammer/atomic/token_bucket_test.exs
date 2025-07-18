@@ -83,7 +83,8 @@ defmodule Hammer.Atomic.TokenBucketTest do
 
     test "race condition", %{table: table} do
       key = "key"
-      refill_rate = 1
+      # No refill to avoid timing issues
+      refill_rate = 0
       capacity = 4
 
       # Use tasks to better control process lifecycle
@@ -105,7 +106,7 @@ defmodule Hammer.Atomic.TokenBucketTest do
       Task.await(task1, 5000)
       Task.await(task2, 5000)
 
-      # Check the final count
+      # Check the final count - should be 0 after consuming 4 tokens from capacity 4
       assert TokenBucket.get(table, key) == 0
     end
   end

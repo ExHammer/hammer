@@ -70,21 +70,24 @@ defmodule Hammer.Atomic.LeakyBucketTest do
       leak_rate = 1
       capacity = 4
 
-      # Start two processes
-      spawn_link(fn ->
-        for _ <- 1..2 do
-          LeakyBucket.hit(table, key, leak_rate, capacity, 1)
-        end
-      end)
+      # Use tasks to better control process lifecycle
+      task1 =
+        Task.async(fn ->
+          for _ <- 1..2 do
+            LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+          end
+        end)
 
-      spawn_link(fn ->
-        for _ <- 1..2 do
-          LeakyBucket.hit(table, key, leak_rate, capacity, 1)
-        end
-      end)
+      task2 =
+        Task.async(fn ->
+          for _ <- 1..2 do
+            LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+          end
+        end)
 
-      # Wait for both processes to finish
-      Process.sleep(100)
+      # Wait for both tasks to complete
+      Task.await(task1, 5000)
+      Task.await(task2, 5000)
 
       # Check the final count
       assert LeakyBucket.get(table, key) == 4

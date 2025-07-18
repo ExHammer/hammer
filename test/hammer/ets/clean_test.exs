@@ -17,6 +17,26 @@ defmodule Hammer.ETS.CleanTest do
     use Hammer, backend: :ets, algorithm: :token_bucket
   end
 
+  # Helper function to wait for a condition to be true
+  defp eventually(fun, timeout \\ 5000, interval \\ 50) do
+    eventually(fun, timeout, interval, System.monotonic_time(:millisecond))
+  end
+
+  defp eventually(fun, timeout, interval, start_time) do
+    if fun.() do
+      :ok
+    else
+      now = System.monotonic_time(:millisecond)
+
+      if now - start_time > timeout do
+        flunk("Condition not met within #{timeout}ms")
+      else
+        Process.sleep(interval)
+        eventually(fun, timeout, interval, start_time)
+      end
+    end
+  end
+
   test "cleaning works for fix window/default ets backend" do
     start_supervised!({RateLimit, clean_period: 100})
 
@@ -28,9 +48,10 @@ defmodule Hammer.ETS.CleanTest do
 
     assert [_] = :ets.tab2list(RateLimit)
 
-    :timer.sleep(150)
-
-    assert :ets.tab2list(RateLimit) == []
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateLimit) == []
+    end)
   end
 
   test "cleaning works for sliding window" do
@@ -44,9 +65,10 @@ defmodule Hammer.ETS.CleanTest do
 
     assert [_] = :ets.tab2list(RateLimitSlidingWindow)
 
-    :timer.sleep(150)
-
-    assert :ets.tab2list(RateLimitSlidingWindow) == []
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateLimitSlidingWindow) == []
+    end)
   end
 
   test "cleaning works for token bucket" do
@@ -60,9 +82,10 @@ defmodule Hammer.ETS.CleanTest do
 
     assert [_] = :ets.tab2list(RateLimitTokenBucket)
 
-    :timer.sleep(150)
-
-    assert :ets.tab2list(RateLimitTokenBucket) == []
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateLimitTokenBucket) == []
+    end)
   end
 
   test "cleaning works for leaky bucket" do
@@ -76,8 +99,9 @@ defmodule Hammer.ETS.CleanTest do
 
     assert [_] = :ets.tab2list(RateLimitLeakyBucket)
 
-    :timer.sleep(150)
-
-    assert :ets.tab2list(RateLimitLeakyBucket) == []
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateLimitLeakyBucket) == []
+    end)
   end
 end

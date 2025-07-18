@@ -104,7 +104,7 @@ defmodule Hammer.Atomic.LeakyBucket do
   """
   @spec hit(
           table :: atom(),
-          key :: String.t(),
+          key :: term(),
           leak_rate :: pos_integer(),
           capacity :: pos_integer(),
           cost :: pos_integer()
@@ -144,7 +144,7 @@ defmodule Hammer.Atomic.LeakyBucket do
   @doc """
   Returns the current level of the bucket for a given key.
   """
-  @spec get(table :: atom(), key :: String.t()) :: non_neg_integer()
+  @spec get(table :: atom(), key :: term()) :: non_neg_integer()
   def get(table, key) do
     case :ets.lookup(table, key) do
       [] ->

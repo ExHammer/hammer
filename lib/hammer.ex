@@ -25,6 +25,11 @@ defmodule Hammer do
   Checks if a key is allowed to perform an action, and increment the counter.
 
   Same as `hit/4` with `increment` set to 1.
+
+  **Note on key types**: While this library accepts any term as a key, some 
+  backends may have restrictions. The Redis backend requires keys to be strings
+  or binary types, as it needs to serialize them for storage. The ETS and Atomic
+  backends support any term type.
   """
   @callback hit(key, scale, limit) :: {:allow, count} | {:deny, timeout}
 

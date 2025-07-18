@@ -13,6 +13,26 @@ defmodule Hammer.Atomic.CleanTest do
     use Hammer, backend: :atomic, algorithm: :token_bucket
   end
 
+  # Helper function to wait for a condition to be true
+  defp eventually(fun, timeout \\ 5000, interval \\ 50) do
+    eventually(fun, timeout, interval, System.monotonic_time(:millisecond))
+  end
+
+  defp eventually(fun, timeout, interval, start_time) do
+    if fun.() do
+      :ok
+    else
+      now = System.monotonic_time(:millisecond)
+
+      if now - start_time > timeout do
+        flunk("Condition not met within #{timeout}ms")
+      else
+        Process.sleep(interval)
+        eventually(fun, timeout, interval, start_time)
+      end
+    end
+  end
+
   test "cleaning works for fix window/default ets backend" do
     start_supervised!({RateAtomicLimit, clean_period: 50, key_older_than: 10})
 
@@ -24,9 +44,10 @@ defmodule Hammer.Atomic.CleanTest do
 
     assert [_] = :ets.tab2list(RateAtomicLimit)
 
-    :timer.sleep(150)
-
-    assert :ets.tab2list(RateAtomicLimit) == []
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateAtomicLimit) == []
+    end)
   end
 
   test "cleaning works for token bucket" do
@@ -40,9 +61,10 @@ defmodule Hammer.Atomic.CleanTest do
 
     assert [_] = :ets.tab2list(RateAtomicLimitTokenBucket)
 
-    :timer.sleep(150)
-
-    assert :ets.tab2list(RateAtomicLimitTokenBucket) == []
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateAtomicLimitTokenBucket) == []
+    end)
   end
 
   test "cleaning works for leaky bucket" do
@@ -56,8 +78,9 @@ defmodule Hammer.Atomic.CleanTest do
 
     assert [_] = :ets.tab2list(RateAtomicLimitLeakyBucket)
 
-    :timer.sleep(150)
-
-    assert :ets.tab2list(RateAtomicLimitLeakyBucket) == []
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateAtomicLimitLeakyBucket) == []
+    end)
   end
 end

@@ -83,26 +83,30 @@ defmodule Hammer.Atomic.TokenBucketTest do
 
     test "race condition", %{table: table} do
       key = "key"
-      refill_rate = 1
+      # No refill to avoid timing issues
+      refill_rate = 0
       capacity = 4
 
-      # Start two processes
-      spawn_link(fn ->
-        for _ <- 1..2 do
-          TokenBucket.hit(table, key, refill_rate, capacity, 1)
-        end
-      end)
+      # Use tasks to better control process lifecycle
+      task1 =
+        Task.async(fn ->
+          for _ <- 1..2 do
+            TokenBucket.hit(table, key, refill_rate, capacity, 1)
+          end
+        end)
 
-      spawn_link(fn ->
-        for _ <- 1..2 do
-          TokenBucket.hit(table, key, refill_rate, capacity, 1)
-        end
-      end)
+      task2 =
+        Task.async(fn ->
+          for _ <- 1..2 do
+            TokenBucket.hit(table, key, refill_rate, capacity, 1)
+          end
+        end)
 
-      # Wait for both processes to finish
-      Process.sleep(100)
+      # Wait for both tasks to complete
+      Task.await(task1, 5000)
+      Task.await(task2, 5000)
 
-      # Check the final count
+      # Check the final count - should be 0 after consuming 4 tokens from capacity 4
       assert TokenBucket.get(table, key) == 0
     end
   end

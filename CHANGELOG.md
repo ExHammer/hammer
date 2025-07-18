@@ -2,7 +2,12 @@
 
 ## 7.1.0 - 2025-07-18
 
-- Minor version bump for feature updates
+- Fix key type inconsistency in backend implementations - all backends now accept `term()` keys instead of `String.t()` (#143)
+- Add comprehensive test coverage for various key types (atoms, tuples, integers, lists, maps)
+- Fix race conditions in atomic backend tests (FixWindow, LeakyBucket, TokenBucket)
+- Replace timing-dependent tests with polling-based `eventually` helper for better CI reliability
+- Add documentation warning about Redis backend string key requirement
+- Fix typo in `inc/3` optional callback documentation (#142)
 
 ## 7.0.1 - 2025-03-04
 

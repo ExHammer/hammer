@@ -83,22 +83,24 @@ defmodule Hammer.Atomic.FixWindowTest do
       scale = :timer.seconds(1)
       limit = 10
 
-      # Start two processes
+      # Use tasks to better control process lifecycle
+      task1 =
+        Task.async(fn ->
+          for _ <- 1..2 do
+            FixWindow.hit(table, key, scale, limit, 1)
+          end
+        end)
 
-      spawn_link(fn ->
-        for _ <- 1..2 do
-          FixWindow.hit(table, key, scale, limit, 1)
-        end
-      end)
+      task2 =
+        Task.async(fn ->
+          for _ <- 1..2 do
+            FixWindow.hit(table, key, scale, limit, 1)
+          end
+        end)
 
-      spawn_link(fn ->
-        for _ <- 1..2 do
-          FixWindow.hit(table, key, scale, limit, 1)
-        end
-      end)
-
-      # Wait for both processes to finish
-      Process.sleep(100)
+      # Wait for both tasks to complete
+      Task.await(task1, 5000)
+      Task.await(task2, 5000)
 
       # Check the final count
       assert FixWindow.get(table, key, scale) == 4

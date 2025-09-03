@@ -129,7 +129,7 @@ Or you could add it to your endpoint:
 defmodule MyAppWeb.Endpoint do
   use Phoenix.Endpoint
 
-  plug RemoteIP
+  plug RemoteIp
   plug :rate_limit
 
   # ...

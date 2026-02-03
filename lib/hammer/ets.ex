@@ -144,8 +144,6 @@ defmodule Hammer.ETS do
     - `:clean_period` - How often to run the cleanup process (in milliseconds). Defaults to 1 minute.
     - `:key_older_than` - Optional maximum age for bucket entries (in milliseconds). Defaults to 24 hours.
       Entries older than this will be removed during cleanup.
-    - `:algorithm` - The rate limiting algorithm to use. Can be `:fixed_window`, `:sliding_window`,
-      `:token_bucket`, or `:leaky_bucket`. Defaults to `:fixed_window`.
     - optional `:debug`, `:spawn_opts`, and `:hibernate_after` GenServer options
   """
   @spec start_link([start_option]) :: GenServer.on_start()

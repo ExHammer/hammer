@@ -81,7 +81,7 @@ defmodule Hammer.Atomic do
       def start_link(opts) do
         opts = Keyword.put(opts, :table, @table)
         opts = Keyword.put_new(opts, :clean_period, :timer.minutes(1))
-        opts = Keyword.put_new(opts, :algorithm, @algorithm)
+        opts = Keyword.put_new(opts, :algorithm_module, @algorithm)
         Hammer.Atomic.start_link(opts)
       end
 
@@ -136,7 +136,7 @@ defmodule Hammer.Atomic do
 
     {clean_period, opts} = Keyword.pop!(opts, :clean_period)
     {table, opts} = Keyword.pop!(opts, :table)
-    {algorithm, opts} = Keyword.pop!(opts, :algorithm)
+    {algorithm_module, opts} = Keyword.pop!(opts, :algorithm_module)
     {key_older_than, opts} = Keyword.pop(opts, :key_older_than, :timer.hours(24))
 
     case opts do
@@ -151,10 +151,10 @@ defmodule Hammer.Atomic do
 
     config = %{
       table: table,
-      table_opts: algorithm.ets_opts(),
+      table_opts: algorithm_module.ets_opts(),
       clean_period: clean_period,
       key_older_than: key_older_than,
-      algorithm: algorithm
+      algorithm_module: algorithm_module
     }
 
     GenServer.start_link(__MODULE__, config, gen_opts)

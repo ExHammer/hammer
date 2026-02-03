@@ -86,6 +86,8 @@ defmodule Hammer.Atomic.LeakyBucket do
       MyApp.RateLimit.hit("user_123", 100, 500, 1)
   """
 
+  import Bitwise
+
   @doc false
   @spec ets_opts() :: list()
   def ets_opts do
@@ -99,6 +101,19 @@ defmodule Hammer.Atomic.LeakyBucket do
     ]
   end
 
+  # Pack timestamp (seconds) and fill level into one 64-bit value for atomic CAS.
+  # High 32 bits: timestamp, Low 32 bits: fill level
+  @compile {:inline, pack: 2, unpack: 1}
+  defp pack(timestamp, fill) do
+    (timestamp &&& 0xFFFFFFFF) <<< 32 ||| (fill &&& 0xFFFFFFFF)
+  end
+
+  defp unpack(packed) do
+    timestamp = packed >>> 32 &&& 0xFFFFFFFF
+    fill = packed &&& 0xFFFFFFFF
+    {timestamp, fill}
+  end
+
   @doc """
   Checks if a key is allowed to perform an action, and increment the counter by the given amount.
   """
@@ -110,34 +125,51 @@ defmodule Hammer.Atomic.LeakyBucket do
           cost :: pos_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, leak_rate, capacity, cost) do
-    # bucket window
     now = System.system_time(:second)
 
     case :ets.lookup(table, key) do
       [{_, atomic}] ->
-        # Get current bucket state
-        current_fill = :atomics.get(atomic, 1)
-        last_update = :atomics.get(atomic, 2)
-
-        leaked = trunc((now - last_update) * leak_rate)
-
-        # Subtract leakage from current level (don't go below 0)
-        current_fill = max(0, current_fill - leaked)
-
-        if current_fill < capacity do
-          final_level = current_fill + cost
-
-          :atomics.exchange(atomic, 1, final_level)
-          :atomics.exchange(atomic, 2, now)
-
-          {:allow, final_level}
-        else
-          {:deny, 1000}
-        end
+        do_hit(atomic, now, leak_rate, capacity, cost)
 
       [] ->
-        :ets.insert_new(table, {key, :atomics.new(2, signed: false)})
+        atomic = :atomics.new(2, signed: false)
+
+        if :ets.insert_new(table, {key, atomic}) do
+          # Initialize with empty bucket at current time
+          initial_packed = pack(now, 0)
+          :atomics.put(atomic, 1, initial_packed)
+          :atomics.put(atomic, 2, now)
+        end
+
         hit(table, key, leak_rate, capacity, cost)
+    end
+  end
+
+  defp do_hit(atomic, now, leak_rate, capacity, cost) do
+    current_packed = :atomics.get(atomic, 1)
+    {last_update, current_fill} = unpack(current_packed)
+
+    leaked = trunc((now - last_update) * leak_rate)
+
+    # Subtract leakage from current level (don't go below 0)
+    current_fill = max(0, current_fill - leaked)
+
+    if current_fill < capacity do
+      final_level = current_fill + cost
+      new_packed = pack(now, final_level)
+
+      case :atomics.compare_exchange(atomic, 1, current_packed, new_packed) do
+        :ok ->
+          # Update slot 2 for cleanup tracking (non-critical, just for age-based cleanup)
+          :atomics.put(atomic, 2, now)
+          {:allow, final_level}
+
+        _current_value ->
+          # CAS failed, another process modified the value; retry
+          do_hit(atomic, now, leak_rate, capacity, cost)
+      end
+    else
+      {:deny, 1000}
     end
   end
 
@@ -151,7 +183,9 @@ defmodule Hammer.Atomic.LeakyBucket do
         0
 
       [{_, atomic}] ->
-        :atomics.get(atomic, 1)
+        packed = :atomics.get(atomic, 1)
+        {_timestamp, fill} = unpack(packed)
+        fill
 
       _ ->
         0

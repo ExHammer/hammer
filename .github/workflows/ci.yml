@@ -15,18 +15,30 @@ jobs:
     strategy:
       # https://hexdocs.pm/elixir/compatibility-and-deprecations.html#between-elixir-and-erlang-otp
       matrix:
-        elixir: [1.17, 1.16, 1.15]
-        otp: [26, 25]
         include:
+          # Latest
+          - elixir: 1.19
+            otp: 28
+          - elixir: 1.19
+            otp: 27
+          # 1.18
           - elixir: 1.18
             otp: 27
+          - elixir: 1.18
+            otp: 26
+          # 1.17
           - elixir: 1.17
             otp: 27
-          - elixir: 1.14
-            otp: 25
+          - elixir: 1.17
+            otp: 26
+          # Older supported
+          - elixir: 1.16
+            otp: 26
+          - elixir: 1.15
+            otp: 26
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: erlef/setup-beam@v1
         with:
@@ -53,9 +65,9 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: erlef/setup-beam@v1
         with:
-          elixir-version: 1
-          otp-version: 27
+          elixir-version: 1.19
+          otp-version: 28
       - run: mix format --check-formatted

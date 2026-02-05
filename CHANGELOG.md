@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.2.0 - 2026-02-03
+
+- Fix race condition in `TokenBucket` and `LeakyBucket` atomics backends by using compare-and-swap (CAS) with packed 64-bit values (#169)
+- Drop Elixir 1.14 support (#169)
+- Add Elixir 1.19 / OTP 28 support (#169)
+- Rename internal `:algorithm` option to `:algorithm_module` in Atomic backend for clarity (#170)
+
 ## 7.1.0 - 2025-07-18
 
 - Fix key type inconsistency in backend implementations - all backends now accept `term()` keys instead of `String.t()` (#143)

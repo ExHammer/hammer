@@ -165,8 +165,8 @@ defmodule Hammer.ETS.TokenBucket do
   """
   @spec clean(config :: ETS.config()) :: non_neg_integer()
   def clean(config) do
-    now = ETS.now()
-    older_than = now - config.key_older_than
+    now = System.system_time(:second)
+    older_than = now - div(config.key_older_than, 1000)
 
     match_spec = [{{:_, :_, :"$1"}, [], [{:<, :"$1", {:const, older_than}}]}]
     :ets.select_delete(config.table, match_spec)

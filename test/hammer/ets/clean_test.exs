@@ -72,7 +72,7 @@ defmodule Hammer.ETS.CleanTest do
   end
 
   test "cleaning works for token bucket" do
-    start_supervised!({RateLimitTokenBucket, clean_period: 100})
+    start_supervised!({RateLimitTokenBucket, clean_period: 100, key_older_than: 1000})
 
     key = "key"
     refill_rate = 1
@@ -89,7 +89,7 @@ defmodule Hammer.ETS.CleanTest do
   end
 
   test "cleaning works for leaky bucket" do
-    start_supervised!({RateLimitLeakyBucket, clean_period: 100})
+    start_supervised!({RateLimitLeakyBucket, clean_period: 100, key_older_than: 1000})
 
     key = "key"
     leak_rate = 1

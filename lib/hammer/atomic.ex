@@ -186,48 +186,51 @@ defmodule Hammer.Atomic do
   end
 
   defp clean(config) do
-    table = config.table
-
     case config.algorithm_module do
-      Hammer.Atomic.FixWindow ->
-        # FixWindow stores expires_at in milliseconds in slot 2
-        now = now()
-
-        :ets.foldl(
-          fn {_key, atomic} = term, deleted ->
-            expires_at = :atomics.get(atomic, 2)
-
-            if now - expires_at > config.key_older_than do
-              :ets.delete_object(table, term)
-              deleted + 1
-            else
-              deleted
-            end
-          end,
-          0,
-          table
-        )
-
-      _ ->
-        # TokenBucket and LeakyBucket store last_update in seconds in slot 2
-        now = System.system_time(:second)
-        older_than = now - div(config.key_older_than, 1000)
-
-        :ets.foldl(
-          fn {_key, atomic} = term, deleted ->
-            last_update = :atomics.get(atomic, 2)
-
-            if last_update < older_than do
-              :ets.delete_object(table, term)
-              deleted + 1
-            else
-              deleted
-            end
-          end,
-          0,
-          table
-        )
+      Hammer.Atomic.FixWindow -> clean_fix_window(config)
+      _ -> clean_bucket(config)
     end
+  end
+
+  # FixWindow stores expires_at in milliseconds in slot 2
+  defp clean_fix_window(config) do
+    now = now()
+
+    :ets.foldl(
+      fn {_key, atomic} = term, deleted ->
+        expires_at = :atomics.get(atomic, 2)
+
+        if now - expires_at > config.key_older_than do
+          :ets.delete_object(config.table, term)
+          deleted + 1
+        else
+          deleted
+        end
+      end,
+      0,
+      config.table
+    )
+  end
+
+  # TokenBucket and LeakyBucket store last_update in seconds in slot 2
+  defp clean_bucket(config) do
+    now = System.system_time(:second)
+    older_than = now - div(config.key_older_than, 1000)
+
+    :ets.foldl(
+      fn {_key, atomic} = term, deleted ->
+        last_update = :atomics.get(atomic, 2)
+
+        if last_update < older_than do
+          :ets.delete_object(config.table, term)
+          deleted + 1
+        else
+          deleted
+        end
+      end,
+      0,
+      config.table
+    )
   end
 
   defp schedule(clean_period) do

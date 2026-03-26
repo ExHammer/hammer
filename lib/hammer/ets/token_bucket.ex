@@ -119,7 +119,17 @@ defmodule Hammer.ETS.TokenBucket do
     # Try to insert new empty bucket if doesn't exist
     :ets.insert_new(table, {key, capacity, now})
 
-    [{^key, current_level, last_update}] = :ets.lookup(table, key)
+    {current_level, last_update} =
+      case :ets.lookup(table, key) do
+        [{^key, current_level, last_update}] ->
+          {current_level, last_update}
+
+        [] ->
+          # Entry was deleted between insert_new and lookup (cleanup race or table restart)
+          :ets.insert(table, {key, capacity, now})
+          {capacity, now}
+      end
+
     new_tokens = trunc((now - last_update) * refill_rate)
 
     current_tokens = min(capacity, current_level + new_tokens)

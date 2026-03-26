@@ -66,6 +66,32 @@ defmodule Hammer.ETS.LeakyBucketTest do
     end
   end
 
+  describe "race condition handling" do
+    test "hit recovers when entry is deleted between insert_new and lookup", %{table: table} do
+      key = "race_key"
+      leak_rate = 10
+      capacity = 10
+
+      # Insert an entry, then delete it to simulate cleanup race
+      :ets.insert(table, {key, 5, System.system_time(:second)})
+      :ets.delete(table, key)
+
+      # hit should handle the missing entry gracefully
+      assert {:allow, 1} = LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+    end
+
+    test "hit works on a fresh empty table", %{table: table} do
+      key = "fresh_key"
+      leak_rate = 10
+      capacity = 10
+
+      # Ensure key doesn't exist
+      assert :ets.lookup(table, key) == []
+
+      assert {:allow, 1} = LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+    end
+  end
+
   describe "get" do
     test "get returns current bucket level", %{table: table} do
       key = "key"

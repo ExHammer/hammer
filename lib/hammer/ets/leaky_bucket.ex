@@ -117,7 +117,16 @@ defmodule Hammer.ETS.LeakyBucket do
     :ets.insert_new(table, {key, 0, now})
 
     # Get current bucket state
-    [{^key, current_fill, last_update}] = :ets.lookup(table, key)
+    {current_fill, last_update} =
+      case :ets.lookup(table, key) do
+        [{^key, current_fill, last_update}] ->
+          {current_fill, last_update}
+
+        [] ->
+          # Entry was deleted between insert_new and lookup (cleanup race or table restart)
+          :ets.insert(table, {key, 0, now})
+          {0, now}
+      end
 
     leaked = trunc((now - last_update) * leak_rate)
 

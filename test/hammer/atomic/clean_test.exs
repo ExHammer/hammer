@@ -51,7 +51,7 @@ defmodule Hammer.Atomic.CleanTest do
   end
 
   test "cleaning works for token bucket" do
-    start_supervised!({RateAtomicLimitTokenBucket, clean_period: 50, key_older_than: 10})
+    start_supervised!({RateAtomicLimitTokenBucket, clean_period: 100, key_older_than: 1000})
 
     key = "key"
     refill_rate = 1
@@ -68,7 +68,7 @@ defmodule Hammer.Atomic.CleanTest do
   end
 
   test "cleaning works for leaky bucket" do
-    start_supervised!({RateAtomicLimitLeakyBucket, clean_period: 50, key_older_than: 10})
+    start_supervised!({RateAtomicLimitLeakyBucket, clean_period: 100, key_older_than: 1000})
 
     key = "key"
     leak_rate = 1

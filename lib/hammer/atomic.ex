@@ -186,8 +186,14 @@ defmodule Hammer.Atomic do
   end
 
   defp clean(config) do
-    table = config.table
+    case config.algorithm_module do
+      Hammer.Atomic.FixWindow -> clean_fix_window(config)
+      _ -> clean_bucket(config)
+    end
+  end
 
+  # FixWindow stores expires_at in milliseconds in slot 2
+  defp clean_fix_window(config) do
     now = now()
 
     :ets.foldl(
@@ -195,14 +201,35 @@ defmodule Hammer.Atomic do
         expires_at = :atomics.get(atomic, 2)
 
         if now - expires_at > config.key_older_than do
-          :ets.delete_object(table, term)
+          :ets.delete_object(config.table, term)
           deleted + 1
         else
           deleted
         end
       end,
       0,
-      table
+      config.table
+    )
+  end
+
+  # TokenBucket and LeakyBucket store last_update in seconds in slot 2
+  defp clean_bucket(config) do
+    now = System.system_time(:second)
+    older_than = now - div(config.key_older_than, 1000)
+
+    :ets.foldl(
+      fn {_key, atomic} = term, deleted ->
+        last_update = :atomics.get(atomic, 2)
+
+        if last_update < older_than do
+          :ets.delete_object(config.table, term)
+          deleted + 1
+        else
+          deleted
+        end
+      end,
+      0,
+      config.table
     )
   end
 

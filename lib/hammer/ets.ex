@@ -17,6 +17,19 @@ defmodule Hammer.ETS do
   - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 1 minute
   - `:key_older_than` - (in milliseconds) maximum age for entries before they are cleaned up, defaults to 1 hour
   - `:algorithm` - the rate limiting algorithm to use, one of: `:fix_window`, `:sliding_window`, `:leaky_bucket`, `:token_bucket`. Defaults to `:fix_window`
+  - `:before_clean` - optional callback invoked with expired entries before they are deleted.
+    Accepts a function `(algorithm :: atom(), entries :: [map()]) -> any()` or an MFA tuple
+    `{module, function, extra_args}`. Each entry is a map with `:key`, `:value`, and `:expired_at` (ms).
+    If the callback raises, entries are still deleted and a warning is logged.
+
+      MyApp.RateLimit.start_link(
+        clean_period: :timer.minutes(1),
+        before_clean: fn algorithm, entries ->
+          Enum.each(entries, fn entry ->
+            MyApp.Telemetry.emit_expired(algorithm, entry)
+          end)
+        end
+      )
 
   The ETS backend supports the following algorithms:
     - `:fix_window` - Fixed window rate limiting (default)
@@ -32,11 +45,14 @@ defmodule Hammer.ETS do
   use GenServer
   require Logger
 
+  @type before_clean :: (atom(), [map()] -> any()) | {module(), atom(), list()}
+
   @type start_option ::
           {:clean_period, pos_integer()}
           | {:table, atom()}
           | {:algorithm, module()}
           | {:key_older_than, pos_integer()}
+          | {:before_clean, before_clean()}
           | GenServer.option()
 
   @type config :: %{
@@ -44,7 +60,8 @@ defmodule Hammer.ETS do
           table_opts: list(),
           clean_period: pos_integer(),
           key_older_than: pos_integer(),
-          algorithm: module()
+          algorithm: module(),
+          before_clean: before_clean() | nil
         }
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
@@ -144,6 +161,10 @@ defmodule Hammer.ETS do
     - `:clean_period` - How often to run the cleanup process (in milliseconds). Defaults to 1 minute.
     - `:key_older_than` - Optional maximum age for bucket entries (in milliseconds). Defaults to 24 hours.
       Entries older than this will be removed during cleanup.
+    - `:before_clean` - Optional callback invoked with expired entries before deletion.
+      Accepts a function `(algorithm :: atom(), entries :: [map()]) -> any()` or an MFA tuple
+      `{module, function, extra_args}`. Each entry is a map with `:key`, `:value`, and `:expired_at` (ms).
+      If the callback raises, entries are still deleted and a warning is logged.
     - optional `:debug`, `:spawn_opts`, and `:hibernate_after` GenServer options
   """
   @spec start_link([start_option]) :: GenServer.on_start()
@@ -154,6 +175,7 @@ defmodule Hammer.ETS do
     {table, opts} = Keyword.pop!(opts, :table)
     {algorithm, opts} = Keyword.pop!(opts, :algorithm)
     {key_older_than, opts} = Keyword.pop(opts, :key_older_than, :timer.hours(24))
+    {before_clean, opts} = Keyword.pop(opts, :before_clean)
 
     case opts do
       [] ->
@@ -170,7 +192,8 @@ defmodule Hammer.ETS do
       table_opts: algorithm.ets_opts(),
       clean_period: clean_period,
       key_older_than: key_older_than,
-      algorithm: algorithm
+      algorithm: algorithm,
+      before_clean: before_clean
     }
 
     GenServer.start_link(__MODULE__, config, gen_opts)
@@ -198,10 +221,43 @@ defmodule Hammer.ETS do
   @impl GenServer
   def handle_info(:clean, config) do
     algorithm = config.algorithm
-    algorithm.clean(config)
+
+    if config.before_clean do
+      expired = algorithm.select_expired(config)
+
+      if expired != [] do
+        entries = algorithm.normalize_expired(expired)
+        invoke_before_clean(config.before_clean, algorithm_name(algorithm), entries)
+      end
+
+      algorithm.delete_expired(config, expired)
+    else
+      algorithm.clean(config)
+    end
+
     schedule(config.clean_period)
     {:noreply, config}
   end
+
+  defp invoke_before_clean(callback, algorithm, entries) do
+    case callback do
+      {mod, fun, extra_args} -> apply(mod, fun, [algorithm, entries | extra_args])
+      fun when is_function(fun, 2) -> fun.(algorithm, entries)
+    end
+  rescue
+    e ->
+      Logger.warning(
+        "before_clean callback raised: #{Exception.format(:error, e, __STACKTRACE__)}"
+      )
+  catch
+    kind, reason ->
+      Logger.warning("before_clean callback failed: #{inspect({kind, reason})}")
+  end
+
+  defp algorithm_name(Hammer.ETS.FixWindow), do: :fix_window
+  defp algorithm_name(Hammer.ETS.SlidingWindow), do: :sliding_window
+  defp algorithm_name(Hammer.ETS.TokenBucket), do: :token_bucket
+  defp algorithm_name(Hammer.ETS.LeakyBucket), do: :leaky_bucket
 
   defp schedule(clean_period) do
     Process.send_after(self(), :clean, clean_period)

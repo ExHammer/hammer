@@ -191,4 +191,13 @@ defmodule Hammer.Atomic.LeakyBucket do
         0
     end
   end
+
+  @doc false
+  @spec normalize_entry(key :: term(), atomic :: reference()) :: map()
+  def normalize_entry(key, atomic) do
+    packed = :atomics.get(atomic, 1)
+    {_timestamp, fill} = unpack(packed)
+    last_update = :atomics.get(atomic, 2)
+    %{key: key, value: fill, expired_at: last_update * 1000}
+  end
 end

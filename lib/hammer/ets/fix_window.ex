@@ -164,6 +164,22 @@ defmodule Hammer.ETS.FixWindow do
     :ets.select_delete(table, match_spec)
   end
 
+  @doc """
+  Returns the expiration time (in milliseconds) of the current window for a given key.
+
+  Returns `0` if the key has no active window.
+  """
+  @spec expires_at(table :: atom(), key :: term(), scale :: pos_integer()) :: non_neg_integer()
+  def expires_at(table, key, scale) do
+    window = div(ETS.now(), scale)
+    full_key = {key, window}
+
+    case :ets.lookup(table, full_key) do
+      [{_full_key, _count, expires_at}] -> expires_at
+      [] -> 0
+    end
+  end
+
   @doc false
   @spec select_expired(config :: ETS.config()) :: list()
   def select_expired(config) do

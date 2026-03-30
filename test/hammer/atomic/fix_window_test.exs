@@ -128,6 +128,25 @@ defmodule Hammer.Atomic.FixWindowTest do
     end
   end
 
+  describe "expires_at" do
+    test "returns 0 for unknown key", %{table: table} do
+      assert FixWindow.expires_at(table, "unknown", :timer.seconds(10)) == 0
+    end
+
+    test "returns the expiration timestamp after a hit", %{table: table} do
+      key = "key"
+      scale = :timer.seconds(10)
+
+      assert {:allow, 1} = FixWindow.hit(table, key, scale, 10, 1)
+
+      expires_at = FixWindow.expires_at(table, key, scale)
+      now = System.system_time(:millisecond)
+
+      assert expires_at > now
+      assert expires_at <= now + scale
+    end
+  end
+
   describe "get/set" do
     test "get returns the count set for the given key and scale", %{table: table} do
       key = "key"

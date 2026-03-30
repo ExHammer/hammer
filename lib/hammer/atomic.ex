@@ -150,6 +150,12 @@ defmodule Hammer.Atomic do
           @algorithm.get(@table, key)
         end
       end
+
+      if function_exported?(@algorithm, :expires_at, 3) do
+        def expires_at(key, scale) do
+          @algorithm.expires_at(@table, key, scale)
+        end
+      end
     end
   end
 

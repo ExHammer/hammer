@@ -68,7 +68,15 @@ defmodule Hammer do
   """
   @callback get(key, scale) :: count
 
-  @optional_callbacks hit: 4, inc: 2, inc: 3, set: 3, get: 2
+  @doc """
+  Optional callback for getting the expiration time of the current window for a key.
+
+  Returns the expiration timestamp in milliseconds, or `0` if the key has no active window.
+  Only available for the `:fix_window` algorithm.
+  """
+  @callback expires_at(key, scale) :: non_neg_integer()
+
+  @optional_callbacks hit: 4, inc: 2, inc: 3, set: 3, get: 2, expires_at: 2
 
   @doc """
   Use the Hammer library in a module to create a rate limiter.

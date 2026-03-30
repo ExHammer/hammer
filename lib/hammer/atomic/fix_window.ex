@@ -186,6 +186,22 @@ defmodule Hammer.Atomic.FixWindow do
     end
   end
 
+  @doc """
+  Returns the expiration time (in milliseconds) of the current window for a given key.
+
+  Returns `0` if the key has no active window.
+  """
+  @spec expires_at(table :: atom(), key :: term(), scale :: pos_integer()) :: non_neg_integer()
+  def expires_at(table, key, scale) do
+    window = div(Atomic.now(), scale)
+    full_key = {key, window}
+
+    case :ets.lookup(table, full_key) do
+      [{_, atomic}] -> :atomics.get(atomic, 2)
+      [] -> 0
+    end
+  end
+
   @doc false
   @spec normalize_entry(key :: term(), atomic :: reference()) :: map()
   def normalize_entry(key, atomic) do

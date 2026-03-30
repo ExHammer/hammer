@@ -1,6 +1,8 @@
 defmodule Hammer.Atomic.CleanTest do
   use ExUnit.Case, async: true
 
+  import Hammer.CleanTestHelpers
+
   defmodule RateAtomicLimit do
     use Hammer, backend: :atomic
   end
@@ -35,32 +37,6 @@ defmodule Hammer.Atomic.CleanTest do
 
   defmodule RateAtomicBeforeCleanMFA do
     use Hammer, backend: :atomic
-  end
-
-  defmodule CallbackHandler do
-    def handle(algorithm, entries, extra) do
-      send(extra, {:before_clean_mfa, algorithm, entries})
-    end
-  end
-
-  # Helper function to wait for a condition to be true
-  defp eventually(fun, timeout \\ 5000, interval \\ 50) do
-    eventually(fun, timeout, interval, System.monotonic_time(:millisecond))
-  end
-
-  defp eventually(fun, timeout, interval, start_time) do
-    if fun.() do
-      :ok
-    else
-      now = System.monotonic_time(:millisecond)
-
-      if now - start_time > timeout do
-        flunk("Condition not met within #{timeout}ms")
-      else
-        Process.sleep(interval)
-        eventually(fun, timeout, interval, start_time)
-      end
-    end
   end
 
   test "cleaning works for fix window/default ets backend" do
@@ -222,7 +198,7 @@ defmodule Hammer.Atomic.CleanTest do
         {RateAtomicBeforeCleanMFA,
          clean_period: 50,
          key_older_than: 10,
-         before_clean: {CallbackHandler, :handle, [test_pid]}}
+         before_clean: {Hammer.CallbackHandler, :handle, [test_pid]}}
       )
 
       assert {:allow, 1} = RateAtomicBeforeCleanMFA.hit("user_1", 100, 10)

@@ -45,14 +45,12 @@ defmodule Hammer.ETS do
   use GenServer
   require Logger
 
-  @type before_clean :: (atom(), [map()] -> any()) | {module(), atom(), list()}
-
   @type start_option ::
           {:clean_period, pos_integer()}
           | {:table, atom()}
           | {:algorithm, module()}
           | {:key_older_than, pos_integer()}
-          | {:before_clean, before_clean()}
+          | {:before_clean, Hammer.CleanUtils.before_clean()}
           | GenServer.option()
 
   @type config :: %{
@@ -61,7 +59,7 @@ defmodule Hammer.ETS do
           clean_period: pos_integer(),
           key_older_than: pos_integer(),
           algorithm: module(),
-          before_clean: before_clean() | nil
+          before_clean: Hammer.CleanUtils.before_clean() | nil
         }
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
@@ -227,31 +225,21 @@ defmodule Hammer.ETS do
 
       if expired != [] do
         entries = algorithm.normalize_expired(expired)
-        invoke_before_clean(config.before_clean, algorithm_name(algorithm), entries)
+
+        Hammer.CleanUtils.invoke_before_clean(
+          config.before_clean,
+          algorithm_name(algorithm),
+          entries
+        )
       end
 
-      algorithm.delete_expired(config, expired)
+      Hammer.CleanUtils.delete_expired(config.table, expired)
     else
       algorithm.clean(config)
     end
 
     schedule(config.clean_period)
     {:noreply, config}
-  end
-
-  defp invoke_before_clean(callback, algorithm, entries) do
-    case callback do
-      {mod, fun, extra_args} -> apply(mod, fun, [algorithm, entries | extra_args])
-      fun when is_function(fun, 2) -> fun.(algorithm, entries)
-    end
-  rescue
-    e ->
-      Logger.warning(
-        "before_clean callback raised: #{Exception.format(:error, e, __STACKTRACE__)}"
-      )
-  catch
-    kind, reason ->
-      Logger.warning("before_clean callback failed: #{inspect({kind, reason})}")
   end
 
   defp algorithm_name(Hammer.ETS.FixWindow), do: :fix_window

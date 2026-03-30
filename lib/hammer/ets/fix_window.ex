@@ -172,12 +172,6 @@ defmodule Hammer.ETS.FixWindow do
   end
 
   @doc false
-  @spec delete_expired(config :: ETS.config(), expired :: list()) :: :ok
-  def delete_expired(config, expired) do
-    Enum.each(expired, fn entry -> :ets.delete_object(config.table, entry) end)
-  end
-
-  @doc false
   @spec normalize_expired(expired :: list()) :: list(map())
   def normalize_expired(expired) do
     Enum.map(expired, fn {{key, _window}, count, expires_at} ->

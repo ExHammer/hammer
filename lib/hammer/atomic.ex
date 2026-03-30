@@ -48,12 +48,10 @@ defmodule Hammer.Atomic do
   use GenServer
   require Logger
 
-  @type before_clean :: (atom(), [map()] -> any()) | {module(), atom(), list()}
-
   @type start_option ::
           {:clean_period, pos_integer()}
           | {:key_older_than, pos_integer()}
-          | {:before_clean, before_clean()}
+          | {:before_clean, Hammer.CleanUtils.before_clean()}
           | GenServer.option()
 
   @type config :: %{
@@ -62,7 +60,7 @@ defmodule Hammer.Atomic do
           clean_period: pos_integer(),
           key_older_than: pos_integer(),
           algorithm_module: module(),
-          before_clean: before_clean() | nil
+          before_clean: Hammer.CleanUtils.before_clean() | nil
         }
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
@@ -217,74 +215,31 @@ defmodule Hammer.Atomic do
 
   @impl GenServer
   def handle_info(:clean, config) do
-    if config.before_clean do
-      clean_with_callback(config)
-    else
-      clean(config)
+    case config.algorithm_module do
+      Hammer.Atomic.FixWindow -> clean_fix_window(config)
+      _ -> clean_bucket(config)
     end
 
     schedule(config.clean_period)
     {:noreply, config}
   end
 
-  defp clean(config) do
-    case config.algorithm_module do
-      Hammer.Atomic.FixWindow -> clean_fix_window(config)
-      _ -> clean_bucket(config)
-    end
-  end
-
-  defp clean_with_callback(config) do
-    case config.algorithm_module do
-      Hammer.Atomic.FixWindow -> clean_fix_window_with_callback(config)
-      _ -> clean_bucket_with_callback(config)
-    end
-  end
-
   # FixWindow stores expires_at in milliseconds in slot 2
   defp clean_fix_window(config) do
     now = now()
-
-    :ets.foldl(
-      fn {_key, atomic} = term, deleted ->
-        expires_at = :atomics.get(atomic, 2)
-
-        if now - expires_at > config.key_older_than do
-          :ets.delete_object(config.table, term)
-          deleted + 1
-        else
-          deleted
-        end
-      end,
-      0,
-      config.table
-    )
-  end
-
-  defp clean_fix_window_with_callback(config) do
-    now = now()
     algo_module = config.algorithm_module
 
-    {expired_entries, expired_terms} =
+    expired_terms =
       :ets.foldl(
-        fn {key, atomic} = term, {entries, terms} ->
+        fn {_key, atomic} = term, acc ->
           expires_at = :atomics.get(atomic, 2)
-
-          if now - expires_at > config.key_older_than do
-            entry = algo_module.normalize_entry(key, atomic)
-            {[entry | entries], [term | terms]}
-          else
-            {entries, terms}
-          end
+          if now - expires_at > config.key_older_than, do: [term | acc], else: acc
         end,
-        {[], []},
+        [],
         config.table
       )
 
-    if expired_entries != [] do
-      invoke_before_clean(config.before_clean, algorithm_name(algo_module), expired_entries)
-    end
-
+    maybe_invoke_before_clean(config.before_clean, algo_module, expired_terms)
     Enum.each(expired_terms, fn term -> :ets.delete_object(config.table, term) end)
   end
 
@@ -292,64 +247,32 @@ defmodule Hammer.Atomic do
   defp clean_bucket(config) do
     now = System.system_time(:second)
     older_than = now - div(config.key_older_than, 1000)
-
-    :ets.foldl(
-      fn {_key, atomic} = term, deleted ->
-        last_update = :atomics.get(atomic, 2)
-
-        if last_update < older_than do
-          :ets.delete_object(config.table, term)
-          deleted + 1
-        else
-          deleted
-        end
-      end,
-      0,
-      config.table
-    )
-  end
-
-  defp clean_bucket_with_callback(config) do
-    now = System.system_time(:second)
-    older_than = now - div(config.key_older_than, 1000)
     algo_module = config.algorithm_module
 
-    {expired_entries, expired_terms} =
+    expired_terms =
       :ets.foldl(
-        fn {key, atomic} = term, {entries, terms} ->
+        fn {_key, atomic} = term, acc ->
           last_update = :atomics.get(atomic, 2)
-
-          if last_update < older_than do
-            entry = algo_module.normalize_entry(key, atomic)
-            {[entry | entries], [term | terms]}
-          else
-            {entries, terms}
-          end
+          if last_update < older_than, do: [term | acc], else: acc
         end,
-        {[], []},
+        [],
         config.table
       )
 
-    if expired_entries != [] do
-      invoke_before_clean(config.before_clean, algorithm_name(algo_module), expired_entries)
-    end
-
+    maybe_invoke_before_clean(config.before_clean, algo_module, expired_terms)
     Enum.each(expired_terms, fn term -> :ets.delete_object(config.table, term) end)
   end
 
-  defp invoke_before_clean(callback, algorithm, entries) do
-    case callback do
-      {mod, fun, extra_args} -> apply(mod, fun, [algorithm, entries | extra_args])
-      fun when is_function(fun, 2) -> fun.(algorithm, entries)
-    end
-  rescue
-    e ->
-      Logger.warning(
-        "before_clean callback raised: #{Exception.format(:error, e, __STACKTRACE__)}"
-      )
-  catch
-    kind, reason ->
-      Logger.warning("before_clean callback failed: #{inspect({kind, reason})}")
+  defp maybe_invoke_before_clean(nil, _algo_module, _expired_terms), do: :ok
+  defp maybe_invoke_before_clean(_callback, _algo_module, []), do: :ok
+
+  defp maybe_invoke_before_clean(callback, algo_module, expired_terms) do
+    entries =
+      Enum.map(expired_terms, fn {key, atomic} ->
+        algo_module.normalize_entry(key, atomic)
+      end)
+
+    Hammer.CleanUtils.invoke_before_clean(callback, algorithm_name(algo_module), entries)
   end
 
   defp algorithm_name(Hammer.Atomic.FixWindow), do: :fix_window

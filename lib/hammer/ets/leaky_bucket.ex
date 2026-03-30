@@ -171,4 +171,22 @@ defmodule Hammer.ETS.LeakyBucket do
     match_spec = [{{:_, :_, :"$1"}, [], [{:<, :"$1", {:const, older_than}}]}]
     :ets.select_delete(config.table, match_spec)
   end
+
+  @doc false
+  @spec select_expired(config :: ETS.config()) :: list()
+  def select_expired(config) do
+    now = System.system_time(:second)
+    older_than = now - div(config.key_older_than, 1000)
+
+    match_spec = [{{:_, :_, :"$1"}, [{:<, :"$1", {:const, older_than}}], [:"$_"]}]
+    :ets.select(config.table, match_spec)
+  end
+
+  @doc false
+  @spec normalize_expired(expired :: list()) :: list(map())
+  def normalize_expired(expired) do
+    Enum.map(expired, fn {key, fill, last_update_s} ->
+      %{key: key, value: fill, expired_at: last_update_s * 1000}
+    end)
+  end
 end

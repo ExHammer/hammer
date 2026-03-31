@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.3.0 - 2026-03-31
+
+- Add `expires_at/2` API for fix_window algorithm (#178)
+- Add `before_clean` callback on bucket expiry (#177)
+- Fix timestamp unit mismatch in `TokenBucket` and `LeakyBucket` `clean/1` (#176)
+- Fix race condition between `insert_new` and `lookup` in ETS `hit/5` (#175)
+
 ## 7.2.0 - 2026-02-03
 
 - Fix race condition in `TokenBucket` and `LeakyBucket` atomics backends by using compare-and-swap (CAS) with packed 64-bit values (#169)

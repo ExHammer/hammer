@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `:fix_window_per_key` algorithm for ETS and Atomic backends — a fixed-window variant whose window is anchored to first hit per key instead of a globally-aligned wall-clock epoch. Same one-entry-per-key memory profile as `:fix_window`. The 2x boundary burst is still possible per key, but boundaries are no longer globally synchronized. (#181)
+
 ## 7.3.0 - 2026-03-31
 
 - Add `expires_at/2` API for fix_window algorithm (#178)

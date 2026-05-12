@@ -36,9 +36,11 @@ Each backend supports multiple algorithms. Not all of them are available for all
 | Algorithm | Backend |
 | --------- | ------- |
 | [Hammer.Atomic.FixWindow](https://hexdocs.pm/hammer/Hammer.Atomic.FixWindow.html) | [Hammer.Atomic](https://hexdocs.pm/hammer/Hammer.Atomic.html) |
+| [Hammer.Atomic.FixWindowPerKey](https://hexdocs.pm/hammer/Hammer.Atomic.FixWindowPerKey.html) | [Hammer.Atomic](https://hexdocs.pm/hammer/Hammer.Atomic.html) |
 | [Hammer.Atomic.LeakyBucket](https://hexdocs.pm/hammer/Hammer.Atomic.LeakyBucket.html) | [Hammer.Atomic](https://hexdocs.pm/hammer/Hammer.Atomic.html) |
 | [Hammer.Atomic.TokenBucket](https://hexdocs.pm/hammer/Hammer.Atomic.TokenBucket.html) | [Hammer.Atomic](https://hexdocs.pm/hammer/Hammer.Atomic.html) |
 | [Hammer.ETS.FixWindow](https://hexdocs.pm/hammer/Hammer.ETS.FixWindow.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
+| [Hammer.ETS.FixWindowPerKey](https://hexdocs.pm/hammer/Hammer.ETS.FixWindowPerKey.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
 | [Hammer.ETS.LeakyBucket](https://hexdocs.pm/hammer/Hammer.ETS.LeakyBucket.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
 | [Hammer.ETS.TokenBucket](https://hexdocs.pm/hammer/Hammer.ETS.TokenBucket.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
 | [Hammer.ETS.SlidingWindow](https://hexdocs.pm/hammer/Hammer.ETS.SlidingWindow.html) | [Hammer.ETS](https://hexdocs.pm/hammer/Hammer.ETS.html) |
@@ -63,6 +65,13 @@ Here's a comparison of the different rate limiting algorithms to help you choose
 - Potential edge case: Up to 2x requests possible at window boundaries
 - Best for: Basic API limits where occasional bursts are acceptable
 
+### [Fixed Window Per Key](https://hexdocs.pm/hammer/Hammer.Atomic.FixWindowPerKey.html)
+- Same low overhead and one-entry-per-key footprint as Fixed Window
+- Each key's window is anchored to its first hit, not a globally aligned wall-clock boundary
+- 2x boundary burst is still possible per key, but boundaries are not globally synchronized so they cannot be exploited deterministically
+- Same semantics as the common Redis `INCR + EXPIRE NX` pattern
+- Best for: Basic rate limiting where globally-synchronized boundaries are undesirable
+
 ### [Leaky Bucket](https://hexdocs.pm/hammer/Hammer.Atomic.LeakyBucket.html)
 - Provides smooth, consistent request rate
 - Requests "leak" out at constant rate
@@ -83,6 +92,7 @@ Here's a comparison of the different rate limiting algorithms to help you choose
 
 Selection Guide:
 - Need simple implementation? → Fixed Window
+- Want Fixed Window simplicity but without globally-synchronized boundaries? → Fixed Window Per Key
 - Need smooth output rate? → Leaky Bucket
 - Need burst tolerance? → Token Bucket
 - Need precise limits? → Sliding Window

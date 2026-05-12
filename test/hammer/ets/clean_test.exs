@@ -7,6 +7,14 @@ defmodule Hammer.ETS.CleanTest do
     use Hammer, backend: :ets
   end
 
+  defmodule RateLimitFixWindowPerKey do
+    use Hammer, backend: :ets, algorithm: :fix_window_per_key
+  end
+
+  defmodule RateLimitBeforeCleanFixWindowPerKey do
+    use Hammer, backend: :ets, algorithm: :fix_window_per_key
+  end
+
   defmodule RateLimitSlidingWindow do
     use Hammer, backend: :ets, algorithm: :sliding_window
   end
@@ -61,6 +69,23 @@ defmodule Hammer.ETS.CleanTest do
     # Wait for cleanup to occur by polling the table
     eventually(fn ->
       :ets.tab2list(RateLimit) == []
+    end)
+  end
+
+  test "cleaning works for fix_window_per_key" do
+    start_supervised!({RateLimitFixWindowPerKey, clean_period: 100})
+
+    key = "key"
+    scale = 100
+    count = 10
+
+    assert {:allow, 1} = RateLimitFixWindowPerKey.hit(key, scale, count)
+
+    assert [_] = :ets.tab2list(RateLimitFixWindowPerKey)
+
+    # Wait for cleanup to occur by polling the table
+    eventually(fn ->
+      :ets.tab2list(RateLimitFixWindowPerKey) == []
     end)
   end
 
@@ -133,6 +158,28 @@ defmodule Hammer.ETS.CleanTest do
 
       eventually(fn ->
         :ets.tab2list(RateLimitBeforeClean) == []
+      end)
+    end
+
+    test "receives correct algorithm atom and entries for fix_window_per_key" do
+      test_pid = self()
+
+      callback = fn algorithm, entries ->
+        send(test_pid, {:before_clean, algorithm, entries})
+      end
+
+      start_supervised!(
+        {RateLimitBeforeCleanFixWindowPerKey, clean_period: 100, before_clean: callback}
+      )
+
+      assert {:allow, 1} = RateLimitBeforeCleanFixWindowPerKey.hit("user_1", 100, 10)
+
+      assert_receive {:before_clean, :fix_window_per_key, entries}, 5000
+      assert [%{key: "user_1", value: 1, expired_at: expired_at}] = entries
+      assert is_integer(expired_at)
+
+      eventually(fn ->
+        :ets.tab2list(RateLimitBeforeCleanFixWindowPerKey) == []
       end)
     end
 

@@ -190,6 +190,34 @@ defmodule Hammer.ETS.FixWindowPerKeyTest do
     end
   end
 
+  describe "concurrent expiry reset" do
+    test "every concurrent hit on an expired key is counted", %{table: table} do
+      key = "race"
+      scale = :timer.seconds(5)
+      limit = 100_000
+
+      :ets.insert(table, {key, 0, System.system_time(:millisecond) - 1})
+
+      n = 200
+
+      tasks =
+        Enum.map(1..n, fn _ ->
+          Task.async(fn ->
+            receive do
+              :go -> FixWindowPerKey.hit(table, key, scale, limit, 1)
+            end
+          end)
+        end)
+
+      Enum.each(tasks, &send(&1.pid, :go))
+      results = Task.await_many(tasks, 5_000)
+
+      allows = Enum.count(results, &match?({:allow, _}, &1))
+      assert allows == n
+      assert FixWindowPerKey.get(table, key, scale) == allows
+    end
+  end
+
   describe "get/set" do
     test "get returns the count set for the given key and scale", %{table: table} do
       key = "key"

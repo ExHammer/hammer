@@ -102,16 +102,32 @@ defmodule Hammer.Atomic.FixWindowPerKey do
     end
   end
 
+  # Sentinel written to expires_at slot while a reset is in progress.
+  # All other processes that see this value spin-retry until the winner
+  # has written both the new counter and the real expires_at.
+  @reset_lock 0xFFFFFFFFFFFFFFFF
+
   defp do_hit(atomic, now, scale, limit, increment) do
     expires_at = :atomics.get(atomic, 2)
 
-    if expires_at > now do
-      count = :atomics.add_get(atomic, 1, increment)
-      if count <= limit, do: {:allow, count}, else: {:deny, expires_at - now}
-    else
-      :atomics.put(atomic, 1, increment)
-      :atomics.exchange(atomic, 2, now + scale)
-      if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
+    cond do
+      expires_at == @reset_lock ->
+        do_hit(atomic, now, scale, limit, increment)
+
+      expires_at > now ->
+        count = :atomics.add_get(atomic, 1, increment)
+        if count <= limit, do: {:allow, count}, else: {:deny, expires_at - now}
+
+      true ->
+        case :atomics.compare_exchange(atomic, 2, expires_at, @reset_lock) do
+          :ok ->
+            :atomics.put(atomic, 1, increment)
+            :atomics.put(atomic, 2, now + scale)
+            if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
+
+          _ ->
+            do_hit(atomic, now, scale, limit, increment)
+        end
     end
   end
 
@@ -131,17 +147,29 @@ defmodule Hammer.Atomic.FixWindowPerKey do
       [{_, atomic}] ->
         expires_at = :atomics.get(atomic, 2)
 
-        if expires_at > now do
-          :atomics.add_get(atomic, 1, increment)
-        else
-          new_expires_at = now + scale
-          :atomics.put(atomic, 1, increment)
-          :atomics.exchange(atomic, 2, new_expires_at)
-          increment
+        cond do
+          expires_at == @reset_lock ->
+            inc(table, key, scale, increment)
+
+          expires_at > now ->
+            :atomics.add_get(atomic, 1, increment)
+
+          true ->
+            new_expires_at = now + scale
+
+            case :atomics.compare_exchange(atomic, 2, expires_at, @reset_lock) do
+              :ok ->
+                :atomics.put(atomic, 1, increment)
+                :atomics.put(atomic, 2, new_expires_at)
+                increment
+
+              _ ->
+                inc(table, key, scale, increment)
+            end
         end
 
       [] ->
-        :ets.insert(table, {key, :atomics.new(2, signed: false)})
+        :ets.insert_new(table, {key, :atomics.new(2, signed: false)})
         inc(table, key, scale, increment)
     end
   end

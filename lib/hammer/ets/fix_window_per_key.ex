@@ -120,12 +120,19 @@ defmodule Hammer.ETS.FixWindowPerKey do
 
       _ ->
         new_expires_at = now + scale
-        :ets.insert(table, {key, increment, new_expires_at})
 
-        if increment <= limit do
-          {:allow, increment}
-        else
-          {:deny, scale}
+        cond do
+          :ets.insert_new(table, {key, increment, new_expires_at}) ->
+            if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
+
+          :ets.select_replace(table, [
+            {{key, :_, :"$1"}, [{:<, :"$1", {:const, now}}],
+             [{:const, {key, increment, new_expires_at}}]}
+          ]) == 1 ->
+            if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
+
+          true ->
+            hit(table, key, scale, limit, increment)
         end
     end
   end
@@ -148,8 +155,20 @@ defmodule Hammer.ETS.FixWindowPerKey do
 
       _ ->
         new_expires_at = now + scale
-        :ets.insert(table, {key, increment, new_expires_at})
-        increment
+
+        cond do
+          :ets.insert_new(table, {key, increment, new_expires_at}) ->
+            increment
+
+          :ets.select_replace(table, [
+            {{key, :_, :"$1"}, [{:<, :"$1", {:const, now}}],
+             [{:const, {key, increment, new_expires_at}}]}
+          ]) == 1 ->
+            increment
+
+          true ->
+            inc(table, key, scale, increment)
+        end
     end
   end
 

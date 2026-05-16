@@ -123,12 +123,16 @@ defmodule Hammer.Atomic.FixWindowPerKey do
           :ok ->
             :atomics.put(atomic, 1, increment)
             :atomics.put(atomic, 2, now + scale)
-            if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
+            allow_or_deny(increment, limit, scale)
 
           _ ->
             do_hit(atomic, now, scale, limit, increment)
         end
     end
+  end
+
+  defp allow_or_deny(increment, limit, scale) do
+    if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
   end
 
   @doc """
@@ -145,32 +149,34 @@ defmodule Hammer.Atomic.FixWindowPerKey do
 
     case :ets.lookup(table, key) do
       [{_, atomic}] ->
-        expires_at = :atomics.get(atomic, 2)
-
-        cond do
-          expires_at == @reset_lock ->
-            inc(table, key, scale, increment)
-
-          expires_at > now ->
-            :atomics.add_get(atomic, 1, increment)
-
-          true ->
-            new_expires_at = now + scale
-
-            case :atomics.compare_exchange(atomic, 2, expires_at, @reset_lock) do
-              :ok ->
-                :atomics.put(atomic, 1, increment)
-                :atomics.put(atomic, 2, new_expires_at)
-                increment
-
-              _ ->
-                inc(table, key, scale, increment)
-            end
-        end
+        do_inc(atomic, now, scale, increment)
 
       [] ->
         :ets.insert_new(table, {key, :atomics.new(2, signed: false)})
         inc(table, key, scale, increment)
+    end
+  end
+
+  defp do_inc(atomic, now, scale, increment) do
+    expires_at = :atomics.get(atomic, 2)
+
+    cond do
+      expires_at == @reset_lock ->
+        do_inc(atomic, now, scale, increment)
+
+      expires_at > now ->
+        :atomics.add_get(atomic, 1, increment)
+
+      true ->
+        case :atomics.compare_exchange(atomic, 2, expires_at, @reset_lock) do
+          :ok ->
+            :atomics.put(atomic, 1, increment)
+            :atomics.put(atomic, 2, now + scale)
+            increment
+
+          _ ->
+            do_inc(atomic, now, scale, increment)
+        end
     end
   end
 

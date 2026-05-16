@@ -123,18 +123,22 @@ defmodule Hammer.ETS.FixWindowPerKey do
 
         cond do
           :ets.insert_new(table, {key, increment, new_expires_at}) ->
-            if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
+            allow_or_deny(increment, limit, scale)
 
           :ets.select_replace(table, [
             {{key, :_, :"$1"}, [{:<, :"$1", {:const, now}}],
              [{:const, {key, increment, new_expires_at}}]}
           ]) == 1 ->
-            if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
+            allow_or_deny(increment, limit, scale)
 
           true ->
             hit(table, key, scale, limit, increment)
         end
     end
+  end
+
+  defp allow_or_deny(increment, limit, scale) do
+    if increment <= limit, do: {:allow, increment}, else: {:deny, scale}
   end
 
   @doc """

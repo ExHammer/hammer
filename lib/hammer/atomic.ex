@@ -17,7 +17,7 @@ defmodule Hammer.Atomic do
   Runtime configuration:
   - `:clean_period` - (in milliseconds) period to clean up expired entries, defaults to 1 minute
   - `:key_older_than` - (in milliseconds) maximum age for entries before they are cleaned up, defaults to 24 hours
-  - `:algorithm` - the rate limiting algorithm to use, one of: `:fix_window`, `:leaky_bucket`, `:token_bucket`. Defaults to `:fix_window`
+  - `:algorithm` - the rate limiting algorithm to use, one of: `:fix_window`, `:fix_window_per_key`, `:leaky_bucket`, `:token_bucket`. Defaults to `:fix_window`
   - `:before_clean` - optional callback invoked with expired entries before they are deleted.
     Accepts a function `(algorithm :: atom(), entries :: [map()]) -> any()` or an MFA tuple
     `{module, function, extra_args}`. Each entry is a map with `:key`, `:value`, and `:expired_at` (ms).
@@ -37,6 +37,10 @@ defmodule Hammer.Atomic do
 
   - `:fix_window` - Fixed window rate limiting (default)
     Simple counting within fixed time windows. See [Hammer.Atomic.FixWindow](Hammer.Atomic.FixWindow.html) for more details.
+
+  - `:fix_window_per_key` - Per-key fixed window rate limiting
+    Like `:fix_window`, but each key's window is anchored to its first hit rather than a
+    globally-aligned wall-clock boundary. See [Hammer.Atomic.FixWindowPerKey](Hammer.Atomic.FixWindowPerKey.html) for more details.
 
   - `:leaky_bucket` - Leaky bucket rate limiting
     Smooth rate limiting with a fixed rate of tokens. See [Hammer.Atomic.LeakyBucket](Hammer.Atomic.LeakyBucket.html) for more details.
@@ -78,6 +82,9 @@ defmodule Hammer.Atomic do
         :fix_window ->
           Hammer.Atomic.FixWindow
 
+        :fix_window_per_key ->
+          Hammer.Atomic.FixWindowPerKey
+
         :sliding_window ->
           Hammer.Atomic.SlidingWindow
 
@@ -89,7 +96,7 @@ defmodule Hammer.Atomic do
 
         _module ->
           raise ArgumentError, """
-          Hammer requires a valid backend to be specified. Must be one of: :atomic, :fix_window, :sliding_window, :leaky_bucket, :token_bucket.
+          Hammer requires a valid backend to be specified. Must be one of: :atomic, :fix_window, :fix_window_per_key, :sliding_window, :leaky_bucket, :token_bucket.
           If none is specified, :fix_window is used.
 
           Example:
@@ -223,6 +230,7 @@ defmodule Hammer.Atomic do
   def handle_info(:clean, config) do
     case config.algorithm_module do
       Hammer.Atomic.FixWindow -> clean_fix_window(config)
+      Hammer.Atomic.FixWindowPerKey -> clean_fix_window(config)
       _ -> clean_bucket(config)
     end
 
@@ -282,6 +290,7 @@ defmodule Hammer.Atomic do
   end
 
   defp algorithm_name(Hammer.Atomic.FixWindow), do: :fix_window
+  defp algorithm_name(Hammer.Atomic.FixWindowPerKey), do: :fix_window_per_key
   defp algorithm_name(Hammer.Atomic.TokenBucket), do: :token_bucket
   defp algorithm_name(Hammer.Atomic.LeakyBucket), do: :leaky_bucket
 

@@ -94,10 +94,10 @@ defmodule Hammer.ETS.FixWindow do
           key :: term(),
           scale :: pos_integer(),
           limit :: pos_integer(),
-          increment :: pos_integer()
+          increment :: pos_integer(),
+          now :: non_neg_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
-  def hit(table, key, scale, limit, increment) do
-    now = ETS.now()
+  def hit(table, key, scale, limit, increment, now \\ ETS.now()) do
     window = div(now, scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
@@ -117,11 +117,12 @@ defmodule Hammer.ETS.FixWindow do
           table :: atom(),
           key :: term(),
           scale :: pos_integer(),
-          increment :: pos_integer()
+          increment :: pos_integer(),
+          now :: non_neg_integer()
         ) ::
           non_neg_integer()
-  def inc(table, key, scale, increment) do
-    window = div(ETS.now(), scale)
+  def inc(table, key, scale, increment, now \\ ETS.now()) do
+    window = div(now, scale)
     full_key = {key, window}
     expires_at = (window + 1) * scale
     ETS.update_counter(table, full_key, increment, expires_at)
@@ -142,9 +143,10 @@ defmodule Hammer.ETS.FixWindow do
   @doc """
   Returns the count of requests for a given key within the last <scale> seconds.
   """
-  @spec get(table :: atom(), key :: term(), scale :: pos_integer()) :: non_neg_integer()
-  def get(table, key, scale) do
-    window = div(ETS.now(), scale)
+  @spec get(table :: atom(), key :: term(), scale :: pos_integer(), now :: non_neg_integer()) ::
+          non_neg_integer()
+  def get(table, key, scale, now \\ ETS.now()) do
+    window = div(now, scale)
     full_key = {key, window}
 
     case :ets.lookup(table, full_key) do

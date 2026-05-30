@@ -133,9 +133,24 @@ defmodule Hammer.ETS do
         end
       end
 
+      # Same as hit/4 but with an explicit `now` (timestamp in the backend's
+      # time unit), letting callers drive deterministic windows in tests or
+      # supply a custom clock. Only generated for algorithms that accept it.
+      if function_exported?(@algorithm, :hit, 6) do
+        def hit(key, scale, limit, increment, now) do
+          @algorithm.hit(@table, key, scale, limit, increment, now)
+        end
+      end
+
       if function_exported?(@algorithm, :inc, 4) do
         def inc(key, scale, increment \\ 1) do
           @algorithm.inc(@table, key, scale, increment)
+        end
+      end
+
+      if function_exported?(@algorithm, :inc, 5) do
+        def inc(key, scale, increment, now) do
+          @algorithm.inc(@table, key, scale, increment, now)
         end
       end
 
@@ -148,6 +163,12 @@ defmodule Hammer.ETS do
       if function_exported?(@algorithm, :get, 3) do
         def get(key, scale) do
           @algorithm.get(@table, key, scale)
+        end
+      end
+
+      if function_exported?(@algorithm, :get, 4) do
+        def get(key, scale, now) do
+          @algorithm.get(@table, key, scale, now)
         end
       end
 

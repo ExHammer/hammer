@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add an optional `now` timestamp argument to the ETS `:fix_window` backend's `hit`, `inc`, and `get` (and the generated `use Hammer` wrappers), defaulting to the current time. Lets callers drive deterministic windows in tests, or supply a custom clock, without sleeping across wall-clock boundaries.
+
 ## 7.4.0 - 2026-05-19
 
 - Add `:fix_window_per_key` algorithm for ETS and Atomic backends — a fixed-window variant whose window is anchored to first hit per key instead of a globally-aligned wall-clock epoch. Same one-entry-per-key memory profile as `:fix_window`. The 2x boundary burst is still possible per key, but boundaries are no longer globally synchronized. (#181)

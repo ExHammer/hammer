@@ -55,6 +55,26 @@ defmodule Hammer.ETS.FixWindowTest do
       assert {:deny, _retry_after} = FixWindow.hit(table, key, scale, limit, 1)
     end
 
+    test "with an explicit now, windows are deterministic without sleeping", %{table: table} do
+      key = "clock-key"
+      scale = 1_000
+      limit = 2
+
+      # Pin three hits to one window, then jump to the next window by passing
+      # an explicit `now` - no wall-clock sleep needed.
+      now = 1_000_000
+
+      assert {:allow, 1} = FixWindow.hit(table, key, scale, limit, 1, now)
+      assert {:allow, 2} = FixWindow.hit(table, key, scale, limit, 1, now)
+      assert {:deny, retry_after} = FixWindow.hit(table, key, scale, limit, 1, now)
+      assert retry_after == scale - rem(now, scale)
+
+      # Same window: get/4 reads the pinned count; the next window is fresh.
+      assert FixWindow.get(table, key, scale, now) == 3
+      assert {:allow, 1} = FixWindow.hit(table, key, scale, limit, 1, now + scale)
+      assert FixWindow.get(table, key, scale, now) == 3
+    end
+
     test "with custom increment", %{table: table} do
       key = "cost-key"
       scale = :timer.seconds(1)

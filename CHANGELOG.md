@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `mix hammer.install` Igniter task (`mix igniter.install hammer`) that generates a `MyApp.RateLimit` module and adds it to the supervision tree. Supports `--backend ets|atomic|redis`; `redis` also adds the `hammer_backend_redis` dependency. Igniter is an optional dependency. (#157)
+
 ## 7.4.1 - 2026-08-28
 
 - Fix `TokenBucket` ETS backend refill using whole-second resolution, which capped sustained throughput at `capacity` tokens/sec when `refill_rate > capacity`. Refill now uses millisecond resolution. (#192)

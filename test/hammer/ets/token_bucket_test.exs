@@ -63,6 +63,23 @@ defmodule Hammer.ETS.TokenBucketTest do
                TokenBucket.hit(table, key, refill_rate, capacity, 1)
     end
 
+    test "refills at sub-second granularity when refill_rate > capacity", %{table: table} do
+      key = "key"
+      # Small burst allowance with a higher sustained rate,
+      # e.g. a third-party API allowing burst 10 / 100 sustained per second
+      refill_rate = 100
+      capacity = 10
+
+      # Drain the bucket completely
+      assert {:allow, 0} = TokenBucket.hit(table, key, refill_rate, capacity, capacity)
+
+      # At 100 tokens/sec, ~3 tokens accrue within 30ms, so the next hit
+      # must be allowed without waiting for a whole-second boundary
+      :timer.sleep(30)
+
+      assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, 1)
+    end
+
     test "handles costs greater than 1 correctly", %{table: table} do
       key = "key"
       refill_rate = 2
@@ -89,7 +106,7 @@ defmodule Hammer.ETS.TokenBucketTest do
       capacity = 10
 
       # Insert an entry, then delete it to simulate cleanup race
-      :ets.insert(table, {key, 5, System.system_time(:second)})
+      :ets.insert(table, {key, 5, System.system_time(:millisecond)})
       :ets.delete(table, key)
 
       # hit should handle the missing entry gracefully

@@ -114,7 +114,7 @@ defmodule Hammer.ETS.TokenBucket do
           cost :: pos_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, refill_rate, capacity, cost \\ 1) do
-    now = System.system_time(:second)
+    now = System.system_time(:millisecond)
 
     # Try to insert new empty bucket if doesn't exist
     :ets.insert_new(table, {key, capacity, now})
@@ -130,7 +130,7 @@ defmodule Hammer.ETS.TokenBucket do
           {capacity, now}
       end
 
-    new_tokens = trunc((now - last_update) * refill_rate)
+    new_tokens = trunc((now - last_update) * refill_rate / 1000)
 
     current_tokens = min(capacity, current_level + new_tokens)
 
@@ -165,8 +165,8 @@ defmodule Hammer.ETS.TokenBucket do
   """
   @spec clean(config :: ETS.config()) :: non_neg_integer()
   def clean(config) do
-    now = System.system_time(:second)
-    older_than = now - div(config.key_older_than, 1000)
+    now = System.system_time(:millisecond)
+    older_than = now - config.key_older_than
 
     match_spec = [{{:_, :_, :"$1"}, [], [{:<, :"$1", {:const, older_than}}]}]
     :ets.select_delete(config.table, match_spec)
@@ -175,8 +175,8 @@ defmodule Hammer.ETS.TokenBucket do
   @doc false
   @spec select_expired(config :: ETS.config()) :: list()
   def select_expired(config) do
-    now = System.system_time(:second)
-    older_than = now - div(config.key_older_than, 1000)
+    now = System.system_time(:millisecond)
+    older_than = now - config.key_older_than
 
     match_spec = [{{:_, :_, :"$1"}, [{:<, :"$1", {:const, older_than}}], [:"$_"]}]
     :ets.select(config.table, match_spec)
@@ -185,8 +185,8 @@ defmodule Hammer.ETS.TokenBucket do
   @doc false
   @spec normalize_expired(expired :: list()) :: list(map())
   def normalize_expired(expired) do
-    Enum.map(expired, fn {key, level, last_update_s} ->
-      %{key: key, value: level, expired_at: last_update_s * 1000}
+    Enum.map(expired, fn {key, level, last_update_ms} ->
+      %{key: key, value: level, expired_at: last_update_ms}
     end)
   end
 end

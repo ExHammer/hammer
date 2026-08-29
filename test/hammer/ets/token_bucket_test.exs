@@ -80,6 +80,67 @@ defmodule Hammer.ETS.TokenBucketTest do
       assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, 1)
     end
 
+    test "denies with the real time until the next token, not a flat second", %{table: table} do
+      key = "key"
+      # One token every ~18.18ms.
+      refill_rate = 55
+      capacity = 10
+
+      assert {:allow, 0} = TokenBucket.hit(table, key, refill_rate, capacity, capacity)
+
+      # Short exactly one token: ceil(1000 / 55) == 19ms. A flat 1000 here
+      # makes the caller sleep ~53x longer than the limiter actually requires.
+      assert {:deny, retry_after} = TokenBucket.hit(table, key, refill_rate, capacity, 1)
+      assert retry_after == 19
+
+      # The wait scales with how many tokens the cost is short of.
+      assert {:deny, retry_after_5} = TokenBucket.hit(table, key, refill_rate, capacity, 5)
+      assert retry_after_5 == 91
+    end
+
+    test "the deny wait is long enough to actually pay the cost", %{table: table} do
+      key = "key"
+      refill_rate = 55
+      capacity = 10
+
+      assert {:allow, 0} = TokenBucket.hit(table, key, refill_rate, capacity, capacity)
+      assert {:deny, retry_after} = TokenBucket.hit(table, key, refill_rate, capacity, 3)
+
+      # Sleeping the advertised wait must be sufficient -- a wait that rounds
+      # down would hand callers a retry that is still denied.
+      :timer.sleep(retry_after)
+      assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, 3)
+    end
+
+    test "the advertised wait is sufficient across rates, costs and deficits", %{table: table} do
+      # The refill path truncates DOWN and the deny path rounds UP, so it is
+      # worth pinning that the two cannot conspire to hand a caller a wait
+      # that leaves it still denied. Simulated rather than slept: seeding
+      # `last_update` back by exactly the advertised wait is equivalent to the
+      # caller sleeping it, and keeps the sweep deterministic and instant.
+      for refill_rate <- [1, 2, 3, 7, 55, 100, 999, 1_000_000],
+          capacity <- [1, 10, 1000],
+          cost <- [1, 3, capacity],
+          cost <= capacity,
+          starting_level <- [0, div(cost, 2)],
+          starting_level < cost do
+        key = "sufficient:#{refill_rate}:#{capacity}:#{cost}:#{starting_level}"
+        :ets.insert(table, {key, starting_level, System.system_time(:millisecond)})
+
+        assert {:deny, wait} = TokenBucket.hit(table, key, refill_rate, capacity, cost)
+        assert wait >= 1
+
+        # Rewind the stored clock by exactly the advertised wait -- the state
+        # the caller would find itself in having slept precisely that long.
+        [{^key, level, last_update}] = :ets.lookup(table, key)
+        :ets.insert(table, {key, level, last_update - wait})
+
+        assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, cost),
+               "wait of #{wait}ms was too short for rate=#{refill_rate} " <>
+                 "cap=#{capacity} cost=#{cost} level=#{starting_level}"
+      end
+    end
+
     test "handles costs greater than 1 correctly", %{table: table} do
       key = "key"
       refill_rate = 2

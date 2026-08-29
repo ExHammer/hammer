@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.4.1 - 2026-08-28
+
+- Fix `TokenBucket` ETS backend refill using whole-second resolution, which capped sustained throughput at `capacity` tokens/sec when `refill_rate > capacity`. Refill now uses millisecond resolution. (#192)
+
 ## 7.4.0 - 2026-05-19
 
 - Add `:fix_window_per_key` algorithm for ETS and Atomic backends — a fixed-window variant whose window is anchored to first hit per key instead of a globally-aligned wall-clock epoch. Same one-entry-per-key memory profile as `:fix_window`. The 2x boundary burst is still possible per key, but boundaries are no longer globally synchronized. (#181)

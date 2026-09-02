@@ -130,13 +130,34 @@ defmodule Hammer.ETS.TokenBucket do
           {capacity, now}
       end
 
-    new_tokens = trunc((now - last_update) * refill_rate / 1000)
+    elapsed = now - last_update
+    new_tokens = trunc(elapsed * refill_rate / 1000)
 
     current_tokens = min(capacity, current_level + new_tokens)
 
     if current_tokens >= cost do
       final_level = current_tokens - cost
-      :ets.insert(table, {key, final_level, now})
+
+      # Advance the clock only by the time whose tokens we actually credited,
+      # so the sub-token remainder carries into the next hit. Stamping `now`
+      # unconditionally discards it, and a caller hitting faster than one
+      # token-period would then never refill at all: at 55 tokens/sec, hits
+      # every 5ms each credit trunc(0.275) == 0 tokens forever.
+      #
+      # The exception is an overflowing refill. When the bucket filled to
+      # capacity the surplus is legitimately discarded, so the clock has to
+      # snap to `now` or a long-idle bucket banks unbounded credit. That only
+      # applies when tokens actually accrued: if the bucket merely sat at
+      # capacity and `new_tokens` is 0, nothing overflowed, and the elapsed
+      # time is still owed to the level this hit is about to draw down.
+      new_last_update =
+        if current_tokens == capacity and new_tokens > 0 do
+          now
+        else
+          last_update + trunc(new_tokens * 1000 / refill_rate)
+        end
+
+      :ets.insert(table, {key, final_level, new_last_update})
       {:allow, final_level}
     else
       {:deny, 1000}

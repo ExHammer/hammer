@@ -15,7 +15,8 @@ defmodule Hammer.MixProject do
       deps: deps(),
       docs: docs(),
       package: package(),
-      test_coverage: [summary: [threshold: 90]]
+      test_coverage: [summary: [threshold: 90]],
+      dialyzer: [plt_add_apps: [:mix]]
     ]
   end
 

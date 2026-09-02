@@ -115,8 +115,13 @@ defp rate_limit_videos(conn, _opts) do
       conn
 
     {:deny, retry_after} ->
+      # `retry-after` is in whole seconds, and `retry_after` may be under a
+      # second, so round UP and floor at 1. Truncating with `div/2` alone can
+      # emit `retry-after: 0`, which tells the client to retry immediately.
+      retry_after_seconds = max(ceil(retry_after / 1000), 1)
+
       conn
-      |> put_resp_header("retry-after", Integer.to_string(div(retry_after, 1000)))
+      |> put_resp_header("retry-after", Integer.to_string(retry_after_seconds))
       |> send_resp(429, [])
       |> halt()
   end
@@ -144,7 +149,9 @@ defmodule MyAppWeb.Endpoint do
         conn
 
       {:deny, retry_after} ->
-        retry_after_seconds = div(retry_after, 1000)
+        # Round UP and floor at 1 -- see the note above; a sub-second wait
+        # truncated with `div/2` becomes `retry-after: 0`.
+        retry_after_seconds = max(ceil(retry_after / 1000), 1)
 
         conn
         |> put_resp_header("retry-after", Integer.to_string(retry_after_seconds))

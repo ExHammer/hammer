@@ -160,7 +160,20 @@ defmodule Hammer.ETS.TokenBucket do
       :ets.insert(table, {key, final_level, new_last_update})
       {:allow, final_level}
     else
-      {:deny, 1000}
+      # Time until the bucket holds enough tokens to pay `cost`. The other
+      # algorithms already answer with a real wait (`expires_at - now`), and
+      # the callback types this value as a `timeout`; the buckets returned a
+      # flat 1000 because whole-second refill could not express anything
+      # finer. Millisecond refill can: at 55 tokens/sec a caller short one
+      # token waits 19ms, not a second.
+      #
+      # Integer ceiling division, so the answer is exact at every magnitude
+      # and never rounds down into a wait that is still too short. Sleeping
+      # the returned value is always sufficient: it is at least
+      # `deficit * 1000 / refill_rate` ms, which accrues at least `deficit`
+      # whole tokens on top of whatever the current `trunc` already credited.
+      deficit = cost - current_tokens
+      {:deny, max(div(deficit * 1000 + refill_rate - 1, refill_rate), 1)}
     end
   end
 

@@ -136,13 +136,15 @@ defmodule Hammer.Atomic.TokenBucket do
         do_hit(atomic, now, refill_rate, capacity, cost)
 
       [] ->
+        # Initialize the atomic before publishing it in ETS. Once insert_new
+        # succeeds, other processes can look it up immediately, and reading
+        # an uninitialized (zero) packed value would look like an empty bucket
+        # at timestamp 0.
         atomic = :atomics.new(2, signed: false)
+        :atomics.put(atomic, 1, pack(now, capacity))
+        :atomics.put(atomic, 2, now)
 
-        if :ets.insert_new(table, {key, atomic}) do
-          initial_packed = pack(now, capacity)
-          :atomics.put(atomic, 1, initial_packed)
-          :atomics.put(atomic, 2, now)
-        end
+        :ets.insert_new(table, {key, atomic})
 
         hit(table, key, refill_rate, capacity, cost)
     end

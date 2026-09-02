@@ -132,14 +132,14 @@ defmodule Hammer.Atomic.LeakyBucket do
         do_hit(atomic, now, leak_rate, capacity, cost)
 
       [] ->
+        # Initialize the atomic (empty bucket at current time) before
+        # publishing it in ETS, so a concurrent lookup never sees an
+        # uninitialized zero value.
         atomic = :atomics.new(2, signed: false)
+        :atomics.put(atomic, 1, pack(now, 0))
+        :atomics.put(atomic, 2, now)
 
-        if :ets.insert_new(table, {key, atomic}) do
-          # Initialize with empty bucket at current time
-          initial_packed = pack(now, 0)
-          :atomics.put(atomic, 1, initial_packed)
-          :atomics.put(atomic, 2, now)
-        end
+        :ets.insert_new(table, {key, atomic})
 
         hit(table, key, leak_rate, capacity, cost)
     end

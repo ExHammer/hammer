@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix race in Atomic `TokenBucket` and `LeakyBucket` where a newly created bucket was published in ETS before its atomic was initialized, so a concurrent hit could read an uninitialized bucket. With `refill_rate: 0` this lost a hit. The atomic is now initialized before it is inserted.
+
 ## 7.5.0 - 2026-09-02
 
 - Fix `TokenBucket` ETS backend discarding the sub-token refill remainder on every allowed hit. Callers hitting faster than one token period never refilled, and callers paced at exactly the refill rate slowly starved. The stored clock now advances only by the time whose tokens were credited, so the remainder carries into the next hit. (#197)

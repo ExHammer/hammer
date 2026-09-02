@@ -17,20 +17,20 @@ jobs:
       matrix:
         include:
           # Latest
-          - elixir: 1.20
+          - elixir: "1.20"
             otp: 29
-          - elixir: 1.20
+          - elixir: "1.20"
             otp: 28
           # 1.19
-          - elixir: 1.19
+          - elixir: "1.19"
             otp: 28
-          - elixir: 1.19
+          - elixir: "1.19"
             otp: 27
           # 1.18
-          - elixir: 1.18
+          - elixir: "1.18"
             otp: 27
           # Oldest supported (OTP 26 is EOL and no longer tested)
-          - elixir: 1.17
+          - elixir: "1.17"
             otp: 27
 
     steps:
@@ -64,6 +64,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: erlef/setup-beam@v1
         with:
-          elixir-version: 1.20
+          elixir-version: "1.20"
           otp-version: 29
       - run: mix format --check-formatted

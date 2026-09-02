@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 7.5.0 - 2026-09-02
 
+- Fix `TokenBucket` ETS backend discarding the sub-token refill remainder on every allowed hit. Callers hitting faster than one token period never refilled, and callers paced at exactly the refill rate slowly starved. The stored clock now advances only by the time whose tokens were credited, so the remainder carries into the next hit. (#197)
+- Fix `TokenBucket` ETS backend returning a flat `{:deny, 1000}`; it now returns the real time in milliseconds until the bucket holds enough tokens to pay the cost, consistent with the other algorithms. **Behaviour change:** denied callers that sleep on this value will now retry much sooner (e.g. 19ms at `refill_rate: 55` instead of 1000ms). Code that converts it to a `retry-after` header should round up and floor at 1 second; the tutorial examples were updated accordingly. (#198)
 - Add `mix hammer.install` Igniter task (`mix igniter.install hammer`) that generates a `MyApp.RateLimit` module and adds it to the supervision tree. Supports `--backend ets|atomic|redis`; `redis` also adds the `hammer_backend_redis` dependency. Igniter is an optional dependency. (#157)
 
 ## 7.4.1 - 2026-08-28

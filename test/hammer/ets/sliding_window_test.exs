@@ -54,5 +54,23 @@ defmodule Hammer.ETS.SlidingWindowTest do
       assert {:allow, 2} = SlidingWindow.hit(table, key, scale, limit)
       assert {:deny, _retry_after} = SlidingWindow.hit(table, key, scale, limit)
     end
+
+    test "denied hits do not count towards the window", %{table: table} do
+      key = "key"
+      scale = 200
+      limit = 1
+
+      assert {:allow, 1} = SlidingWindow.hit(table, key, scale, limit)
+      :timer.sleep(100)
+      assert {:deny, retry_after} = SlidingWindow.hit(table, key, scale, limit)
+      assert SlidingWindow.get(table, key, scale) == 1
+
+      # a later denied hit must not extend the block
+      :timer.sleep(50)
+      assert {:deny, _} = SlidingWindow.hit(table, key, scale, limit)
+
+      :timer.sleep(retry_after)
+      assert {:allow, 1} = SlidingWindow.hit(table, key, scale, limit)
+    end
   end
 end

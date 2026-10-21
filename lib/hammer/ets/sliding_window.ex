@@ -17,7 +17,8 @@ defmodule Hammer.ETS.SlidingWindow do
   2. To check if rate limit is exceeded, we:
      - Count all requests within the last <scale> seconds
      - If count <= limit: allow the request
-     - If count > limit: deny and return time until oldest request expires
+     - If count > limit: deny, discard this request (denied hits are not counted)
+       and return time until oldest request expires
   3. Old entries outside the window are automatically cleaned up
 
   This provides more precise rate limiting compared to fixed windows, avoiding
@@ -111,12 +112,19 @@ defmodule Hammer.ETS.SlidingWindow do
 
     remove_old_entries_for_key(table, key, now)
 
-    :ets.insert_new(table, {{key, now}, expires_at})
+    # Every hit gets its own entry id: two hits in the same microsecond must not share an ETS
+    # key, or the second would go unrecorded and slip past a window that already holds `limit`.
+    entry_id = {now, :erlang.unique_integer()}
+    :ets.insert(table, {{key, entry_id}, expires_at})
     count = SlidingWindow.get(table, key, scale)
 
     if count <= limit do
       {:allow, count}
     else
+      # Denied hits must not occupy the window, otherwise callers that retry
+      # after `retry_after` keep the window full and are denied forever.
+      :ets.delete(table, {key, entry_id})
+
       # Get the earliest expiration time from all entries for this key
       earliest_expiry = get_earliest_expiry(table, key, now)
       earliest_expiry_ms = round((earliest_expiry - now) / 1000)
@@ -163,7 +171,9 @@ defmodule Hammer.ETS.SlidingWindow do
       }
     ]
 
-    table |> :ets.select(match_spec) |> Enum.min()
+    # Concurrent denied hits delete their own entries, so the window can be empty by the time
+    # we look: tell the caller to retry in 1 ms rather than crash.
+    table |> :ets.select(match_spec) |> Enum.min(fn -> now + 1_000 end)
   end
 
   defp remove_old_entries_for_key(table, key, now) do

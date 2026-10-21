@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fix `SlidingWindow` ETS backend counting denied hits. A denied hit stayed in the window, so callers that slept for `retry_after` and retried at staggered moments kept the window full and were denied forever. Denied hits are now removed from the window. **Behaviour change:** a client that keeps hitting after being denied no longer extends its own block; the ETS backend now matches the Redis backend here. (#210)
+- Fix `SlidingWindow` ETS backend recording at most one hit per microsecond per key. Concurrent hits that landed in the same microsecond shared an ETS key, so the extra ones went unrecorded and could be allowed past the limit. Each hit now gets a unique entry. (#210)
+- Fix `SlidingWindow` ETS backend raising `Enum.EmptyError` on the deny path when concurrent denied hits emptied the window; it now returns `{:deny, 1}`. (#210)
+
 ## 7.5.0 - 2026-09-02
 
 - Fix race in Atomic `TokenBucket` and `LeakyBucket` where a newly created bucket was published in ETS before its atomic was initialized, so a concurrent hit could read an uninitialized bucket. With `refill_rate: 0` this lost a hit. The atomic is now initialized before it is inserted. (#202)

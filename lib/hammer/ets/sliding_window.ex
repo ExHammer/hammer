@@ -105,7 +105,7 @@ defmodule Hammer.ETS.SlidingWindow do
   def hit(table, key, scale, limit) do
     now = now()
 
-    # need to convert scale to milliseconds
+    # need to convert scale to microseconds
     scale_ms = scale * 1000
     expires_at = scale_ms + now
 

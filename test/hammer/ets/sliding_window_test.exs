@@ -72,5 +72,48 @@ defmodule Hammer.ETS.SlidingWindowTest do
       :timer.sleep(retry_after)
       assert {:allow, 1} = SlidingWindow.hit(table, key, scale, limit)
     end
+
+    test "concurrent hits never admit more than limit within one window", %{table: table} do
+      key = "key"
+      scale = 1_000
+      limit = 5
+      deadline = System.monotonic_time(:millisecond) + 200
+
+      allowed =
+        1..8
+        |> Enum.map(fn _ -> Task.async(fn -> spin(table, key, scale, limit, deadline, 0) end) end)
+        |> Task.await_many()
+        |> Enum.sum()
+
+      assert allowed > 0
+      assert allowed <= limit
+    end
+
+    test "deny path does not crash when concurrent denied hits empty the window", %{
+      table: table
+    } do
+      key = "key"
+      deadline = System.monotonic_time(:millisecond) + 500
+
+      # with limit 1 most hits are denied; each denied hit deletes its own entry, so the
+      # window is often empty when the next one computes retry_after
+      results =
+        1..16
+        |> Enum.map(fn _ -> Task.async(fn -> spin(table, key, 50, 1, deadline, 0) end) end)
+        |> Task.await_many()
+
+      assert Enum.sum(results) > 0
+    end
+  end
+
+  defp spin(table, key, scale, limit, deadline, allowed) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      allowed
+    else
+      case SlidingWindow.hit(table, key, scale, limit) do
+        {:allow, _} -> spin(table, key, scale, limit, deadline, allowed + 1)
+        {:deny, _} -> spin(table, key, scale, limit, deadline, allowed)
+      end
+    end
   end
 end

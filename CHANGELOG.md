@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.5.1 - 2026-10-26
 
 - Fix `SlidingWindow` ETS backend counting denied hits. A denied hit stayed in the window, so callers that slept for `retry_after` and retried at staggered moments kept the window full and were denied forever. Denied hits are now removed from the window. **Behaviour change:** a client that keeps hitting after being denied no longer extends its own block; the ETS backend now matches the Redis backend here. (#210)
 - Fix `SlidingWindow` ETS backend recording at most one hit per microsecond per key. Concurrent hits that landed in the same microsecond shared an ETS key, so the extra ones went unrecorded and could be allowed past the limit. Each hit now gets a unique entry. (#210)

@@ -16,6 +16,9 @@ jobs:
       # https://hexdocs.pm/elixir/compatibility-and-deprecations.html#between-elixir-and-erlang-otp
       matrix:
         include:
+          # Pinned toolchain (matches .tool-versions / mise.toml)
+          - elixir: "1.20.5"
+            otp: "29.1.2"
           # Latest
           - elixir: "1.20"
             otp: 29
@@ -64,6 +67,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: erlef/setup-beam@v1
         with:
-          elixir-version: "1.20"
-          otp-version: 29
+          elixir-version: "1.20.5"
+          otp-version: "29.1.2"
       - run: mix format --check-formatted

@@ -68,6 +68,24 @@ defmodule Hammer.ETS.LeakyBucketTest do
                LeakyBucket.hit(table, key, leak_rate, capacity, 1)
     end
 
+    test "denies a hit whose cost would take the level over capacity", %{table: table} do
+      await_fresh_second()
+      key = "key"
+      leak_rate = 1
+      capacity = 10
+
+      assert {:allow, 8} = LeakyBucket.hit(table, key, leak_rate, capacity, 8)
+
+      # 8 + 5 does not fit in 10, even though the bucket is not yet full.
+      # Three must leak first: 2001..3000ms at one per second.
+      assert {:deny, retry_after} = LeakyBucket.hit(table, key, leak_rate, capacity, 5)
+      assert retry_after in 2001..3000
+
+      # The denied hit added nothing, and a cost that fits is still allowed.
+      assert LeakyBucket.get(table, key) == 8
+      assert {:allow, 10} = LeakyBucket.hit(table, key, leak_rate, capacity, 2)
+    end
+
     test "the deny wait is the real time until the bucket leaks below capacity",
          %{table: table} do
       await_fresh_second()

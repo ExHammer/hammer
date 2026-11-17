@@ -10,7 +10,7 @@ defmodule Hammer.Atomic.LeakyBucket do
   For example, with a leak rate of 10 requests/second and bucket size of 100:
   - Requests add to the bucket's current level
   - The bucket leaks 10 requests per second steadily
-  - If bucket reaches capacity (100), new requests are denied
+  - If a request would take the bucket over capacity (100), it is denied
   - Once bucket level drops, new requests are allowed again
 
   ## The algorithm:
@@ -118,7 +118,7 @@ defmodule Hammer.Atomic.LeakyBucket do
   Checks if a key is allowed to perform an action, and increment the counter by the given amount.
 
   On `{:deny, retry_after}`, `retry_after` is the time in milliseconds until the bucket
-  has leaked enough for a hit to be allowed. Leaking is counted in whole seconds, so the
+  has leaked enough for a hit of this `cost` to fit. Leaking is counted in whole seconds, so the
   value runs to the second boundary at which that happens.
   """
   @spec hit(
@@ -158,8 +158,9 @@ defmodule Hammer.Atomic.LeakyBucket do
     # Subtract leakage from current level (don't go below 0)
     current_fill = max(0, current_fill - leaked)
 
-    if current_fill < capacity do
-      final_level = current_fill + cost
+    final_level = current_fill + cost
+
+    if final_level <= capacity do
       new_packed = pack(now, final_level)
 
       case :atomics.compare_exchange(atomic, 1, current_packed, new_packed) do
@@ -173,8 +174,8 @@ defmodule Hammer.Atomic.LeakyBucket do
           do_hit(atomic, now, leak_rate, capacity, cost)
       end
     else
-      # A hit is allowed once the level is strictly below capacity.
-      {:deny, retry_after(now, current_fill - capacity + 1, leak_rate)}
+      # The hit fits once the excess over capacity has leaked away.
+      {:deny, retry_after(now, final_level - capacity, leak_rate)}
     end
   end
 

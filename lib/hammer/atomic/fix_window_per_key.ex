@@ -94,7 +94,7 @@ defmodule Hammer.Atomic.FixWindowPerKey do
 
     with [{_, atomic} = entry] <- :ets.lookup(table, key),
          expires_at = :atomics.get(atomic, 2),
-         true <- expires_at > now or retire(table, entry) do
+         true <- live?(expires_at, now) or retire(table, entry) do
       count = :atomics.add_get(atomic, 1, increment)
       if count <= limit, do: {:allow, count}, else: {:deny, expires_at - now}
     else
@@ -114,6 +114,16 @@ defmodule Hammer.Atomic.FixWindowPerKey do
         {:deny, scale}
     end
   end
+
+  # Up to 7.5.1 a window was reset in place under a lock: this value in the
+  # expiry slot. A process killed while holding it left it there for good.
+  # Nothing writes it any more, but a table that lived through a hot code
+  # upgrade can still carry one, and as a timestamp it would be a window that
+  # never ends. It is treated as expired.
+  @legacy_reset_lock 0xFFFFFFFFFFFFFFFF
+
+  @compile {:inline, live?: 2}
+  defp live?(expires_at, now), do: expires_at > now and expires_at != @legacy_reset_lock
 
   # A window is one atomics ref, and a ref is never reset: when it expires it
   # is retired from the table and a fresh ref takes its place. Both steps are
@@ -158,7 +168,7 @@ defmodule Hammer.Atomic.FixWindowPerKey do
     now = Atomic.now()
 
     with [{_, atomic} = entry] <- :ets.lookup(table, key),
-         true <- :atomics.get(atomic, 2) > now or retire(table, entry) do
+         true <- live?(:atomics.get(atomic, 2), now) or retire(table, entry) do
       :atomics.add_get(atomic, 1, increment)
     else
       _no_active_window ->
@@ -180,9 +190,20 @@ defmodule Hammer.Atomic.FixWindowPerKey do
           count :: non_neg_integer()
         ) :: non_neg_integer()
   def set(table, key, scale, count) do
-    # A fresh window replaces whatever is there in one step, so a concurrent
-    # hit sees either the old window or the new one, never a half-written mix.
-    :ets.insert(table, {key, new_window(count, Atomic.now() + scale)})
+    now = Atomic.now()
+
+    with [{_, atomic}] <- :ets.lookup(table, key),
+         true <- live?(:atomics.get(atomic, 2), now) do
+      # Write into the live window's own ref, so a concurrent hit that has
+      # already looked it up still lands on the counter everyone reads.
+      :atomics.put(atomic, 1, count)
+      :atomics.put(atomic, 2, now + scale)
+    else
+      # No live window to keep: publish a fresh one, as an expired ref is
+      # never reused.
+      _no_active_window -> :ets.insert(table, {key, new_window(count, now + scale)})
+    end
+
     count
   end
 
@@ -199,7 +220,7 @@ defmodule Hammer.Atomic.FixWindowPerKey do
     case :ets.lookup(table, key) do
       [{_, atomic}] ->
         expires_at = :atomics.get(atomic, 2)
-        if expires_at > now, do: :atomics.get(atomic, 1), else: 0
+        if live?(expires_at, now), do: :atomics.get(atomic, 1), else: 0
 
       [] ->
         0
@@ -218,7 +239,7 @@ defmodule Hammer.Atomic.FixWindowPerKey do
     case :ets.lookup(table, key) do
       [{_, atomic}] ->
         expires_at = :atomics.get(atomic, 2)
-        if expires_at > now, do: expires_at, else: 0
+        if live?(expires_at, now), do: expires_at, else: 0
 
       [] ->
         0

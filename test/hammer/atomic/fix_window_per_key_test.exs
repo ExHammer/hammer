@@ -180,6 +180,30 @@ defmodule Hammer.Atomic.FixWindowPerKeyTest do
     end
   end
 
+  describe "unfinished window reset" do
+    # Resetting an expired window used to take a lock by writing a sentinel
+    # into the expiry slot. A process killed while holding it left the
+    # sentinel behind, and every later call on that key spun on it forever.
+    setup %{table: table} do
+      atomic = :atomics.new(2, signed: false)
+      :atomics.put(atomic, 2, 0xFFFFFFFFFFFFFFFF)
+      :ets.insert(table, {"stuck", atomic})
+      :ok
+    end
+
+    test "hit returns instead of waiting for it", %{table: table} do
+      task = Task.async(fn -> FixWindowPerKey.hit(table, "stuck", 1000, 10, 1) end)
+
+      assert {:ok, {:allow, 1}} = Task.yield(task, 500) || Task.shutdown(task, :brutal_kill)
+    end
+
+    test "inc returns instead of waiting for it", %{table: table} do
+      task = Task.async(fn -> FixWindowPerKey.inc(table, "stuck", 1000, 1) end)
+
+      assert {:ok, 1} = Task.yield(task, 500) || Task.shutdown(task, :brutal_kill)
+    end
+  end
+
   describe "inc" do
     test "increments the count for the given key and scale", %{table: table} do
       key = "key"

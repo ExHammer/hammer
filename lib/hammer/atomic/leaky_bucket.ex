@@ -88,6 +88,8 @@ defmodule Hammer.Atomic.LeakyBucket do
 
   import Bitwise
 
+  alias Hammer.BucketUtils
+
   @doc false
   @spec ets_opts() :: list()
   def ets_opts do
@@ -153,7 +155,11 @@ defmodule Hammer.Atomic.LeakyBucket do
     current_packed = :atomics.get(atomic, 1)
     {last_update, current_fill} = unpack(current_packed)
 
-    leaked = trunc((now - last_update) * leak_rate)
+    # The stored clock can be ahead of `now`: a concurrent hit read the time
+    # after this one, or the wall clock stepped back. That is no time elapsed,
+    # not a negative leak, and the clock is never moved backwards.
+    leaked = trunc(max(now - last_update, 0) * leak_rate)
+    now = max(now, last_update)
 
     # Subtract leakage from current level (don't go below 0)
     current_fill = max(0, current_fill - leaked)
@@ -175,23 +181,9 @@ defmodule Hammer.Atomic.LeakyBucket do
       end
     else
       # The hit fits once the excess over capacity has leaked away.
-      {:deny, retry_after(now, final_level - capacity, leak_rate)}
+      {:deny, BucketUtils.leak_wait(now, final_level - capacity, leak_rate)}
     end
   end
-
-  # Milliseconds until a hit would be allowed, given the bucket must leak `units`
-  # more. The bucket counts in whole seconds, so the leak lands when the wall
-  # clock reaches second `now + seconds`; the wait runs to that boundary rather
-  # than a full `seconds * 1000`, and sleeping it is always sufficient.
-  #
-  # A rate of 0 never gets there. There is no honest wait to report, so keep
-  # the flat second these buckets always answered with.
-  defp retry_after(now, units, rate) when rate > 0 do
-    seconds = ceil(units / rate)
-    max((now + seconds) * 1000 - System.system_time(:millisecond), 1)
-  end
-
-  defp retry_after(_now, _units, _rate), do: 1000
 
   @doc """
   Returns the current level of the bucket for a given key.

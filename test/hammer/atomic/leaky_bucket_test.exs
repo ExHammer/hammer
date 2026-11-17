@@ -128,6 +128,19 @@ defmodule Hammer.Atomic.LeakyBucketTest do
       end
     end
 
+    test "a stored clock ahead of the caller's leaks nothing and adds nothing",
+         %{table: table} do
+      key = "key"
+
+      # A concurrent hit that read the time later, or a wall clock that stepped
+      # back, leaves the stored clock ahead of ours. Negative elapsed time must
+      # not be turned into a negative leak, which would raise the level.
+      seed(table, key, 5, System.system_time(:second) + 10)
+
+      assert {:allow, 6} = LeakyBucket.hit(table, key, 100, 10, 1)
+      assert {:allow, 7} = LeakyBucket.hit(table, key, 100, 10, 1)
+    end
+
     test "a leak rate of 0 still denies with a flat second", %{table: table} do
       key = "key"
       seed(table, key, 5, System.system_time(:second))

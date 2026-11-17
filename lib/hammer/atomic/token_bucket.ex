@@ -105,26 +105,36 @@ defmodule Hammer.Atomic.TokenBucket do
     ]
   end
 
-  # Pack the clock and the fill level into one 64-bit value for atomic CAS.
-  # High 32 bits: low 32 bits of the millisecond clock, Low 32 bits: fill level
-  @clock_mask 0xFFFFFFFF
-  @clock_half 0x80000000
+  # The bucket is one 64-bit value, so that a hit is a single atomic CAS:
+  #
+  #   high 22 bits: low 22 bits of the millisecond clock
+  #   low 42 bits:  level in thousandths of a token
+  #
+  # Thousandths make the refill exact: `elapsed_ms * refill_rate` is a whole
+  # number of them, so nothing is rounded and no time is ever credited twice.
+  # 42 bits hold any capacity up to 2^32 tokens.
+  #
+  # 22 bits of clock wrap every 70 minutes. Slot 2 holds the full millisecond
+  # time of the last allowed hit, and settles any gap too long for them.
+  @clock_bits 22
+  @clock_mask 0x3FFFFF
+  @clock_half 0x200000
+  @level_bits 42
+  @level_mask 0x3FFFFFFFFFF
   @compile {:inline, pack: 2, unpack: 1}
-  defp pack(timestamp, fill) do
-    (timestamp &&& @clock_mask) <<< 32 ||| (fill &&& 0xFFFFFFFF)
+  defp pack(clock, level) do
+    (clock &&& @clock_mask) <<< @level_bits ||| (level &&& @level_mask)
   end
 
   defp unpack(packed) do
-    timestamp = packed >>> 32 &&& @clock_mask
-    fill = packed &&& 0xFFFFFFFF
-    {timestamp, fill}
+    {packed >>> (64 - @clock_bits), packed &&& @level_mask}
   end
 
   @doc """
   Checks if a key is allowed to perform an action, and consume the bucket by the given amount.
 
   On `{:deny, retry_after}`, `retry_after` is the time in milliseconds until the bucket
-  holds enough tokens to pay `cost`.
+  holds enough tokens to pay `cost`. A `cost` larger than `capacity` is never allowed.
   """
   @spec hit(
           table :: atom(),
@@ -146,8 +156,8 @@ defmodule Hammer.Atomic.TokenBucket do
         # an uninitialized (zero) packed value would look like an empty bucket
         # at timestamp 0.
         atomic = :atomics.new(2, signed: false)
-        :atomics.put(atomic, 1, pack(now, capacity))
-        :atomics.put(atomic, 2, div(now, 1000))
+        :atomics.put(atomic, 1, pack(now, capacity * 1000))
+        :atomics.put(atomic, 2, now)
 
         :ets.insert_new(table, {key, atomic})
 
@@ -157,69 +167,71 @@ defmodule Hammer.Atomic.TokenBucket do
 
   defp do_hit(atomic, now, refill_rate, capacity, cost) do
     current_packed = :atomics.get(atomic, 1)
-    {last_update, current_fill} = unpack(current_packed)
+    {clock, level} = unpack(current_packed)
 
-    elapsed = elapsed(atomic, now, last_update)
-    new_tokens = trunc(elapsed * refill_rate / 1000)
-    current_tokens = min(capacity, current_fill + new_tokens)
+    elapsed = elapsed(atomic, now, clock)
+    level = min(capacity * 1000, level + trunc(elapsed * refill_rate))
+    price = cost * 1000
 
-    if current_tokens >= cost do
-      final_level = current_tokens - cost
+    if level >= price do
+      final_level = level - price
 
-      # Advance the clock only by the time whose tokens were credited, so the
-      # sub-token remainder carries into the next hit; stamping `now` would
-      # discard it, and a caller hitting faster than one token period would
-      # never refill. The exception is a refill that overflowed the bucket:
-      # the surplus is discarded, so the clock snaps to `now` or an idle
-      # bucket banks unbounded credit.
-      new_last_update =
-        cond do
-          new_tokens == 0 -> last_update
-          current_tokens == capacity -> now
-          true -> last_update + trunc(new_tokens * 1000 / refill_rate)
-        end
-
-      new_packed = pack(new_last_update, final_level)
+      # All of `elapsed` was credited, so the clock moves to `now`. With no
+      # time elapsed it stays put: the stored clock may be ahead of `now`, and
+      # winding it back would credit that stretch a second time.
+      new_clock = if elapsed > 0, do: now, else: clock
+      new_packed = pack(new_clock, final_level)
 
       case :atomics.compare_exchange(atomic, 1, current_packed, new_packed) do
         :ok ->
-          # Update slot 2 for cleanup tracking (non-critical, just for age-based cleanup)
-          :atomics.put(atomic, 2, div(now, 1000))
-          {:allow, final_level}
+          # Slot 2 feeds age-based cleanup and `elapsed/3`. It is written after
+          # the CAS, not with it: see `elapsed/3` for what that can cost.
+          :atomics.put(atomic, 2, now)
+          {:allow, div(final_level, 1000)}
 
         _current_value ->
           # CAS failed, another process modified the value; retry
           do_hit(atomic, now, refill_rate, capacity, cost)
       end
     else
-      {:deny, retry_after(cost - current_tokens, refill_rate)}
+      {:deny, retry_after(price - level, refill_rate)}
     end
   end
 
-  # The packed clock only has the low 32 bits of the time, so the difference
-  # is taken modulo 2^32 and read as signed. A negative difference means a
+  # Milliseconds since the bucket's clock.
+  #
+  # The packed clock only has the low 22 bits of the time, so the difference
+  # is taken modulo 2^22 and read as signed. A negative difference means a
   # concurrent hit that read the time after us has already stored a later
   # clock: no time has passed as far as this bucket is concerned.
   #
-  # That leaves about 24.8 days before a real gap stops fitting. Slot 2 holds
-  # the whole-second time of the last allowed hit, unwrapped, so a bucket idle
-  # for longer than that is recognised there and its true idle time is used.
-  defp elapsed(atomic, now, last_update) do
-    idle = now - :atomics.get(atomic, 2) * 1000
+  # That leaves 35 minutes before a real gap stops fitting. A bucket untouched
+  # for longer is recognised by slot 2, which holds the full time of its last
+  # allowed hit, and that idle time is used. A bucket written by 7.5.1 or
+  # earlier has whole seconds there; it reads as idle for decades and starts
+  # over full.
+  #
+  # Slot 2 is written after the CAS. A hit that lands in that gap on a bucket
+  # idle for 35 minutes or more is credited the idle time again. The level is
+  # capped at capacity either way, so the cost is at most the hits that won
+  # the CAS in that instant going uncounted.
+  defp elapsed(atomic, now, clock) do
+    idle = now - :atomics.get(atomic, 2)
 
-    case now - last_update &&& @clock_mask do
+    case now - clock &&& @clock_mask do
       _wrapped when idle >= @clock_half -> idle
       elapsed when elapsed < @clock_half -> elapsed
       _behind -> 0
     end
   end
 
-  # Milliseconds until the bucket has gained `deficit` more tokens, rounded up
-  # so that sleeping it is always sufficient.
+  # Milliseconds until the bucket has gained `deficit` more thousandths of a
+  # token, rounded up so that sleeping it is sufficient for any cost the
+  # bucket can hold.
   #
   # A rate of 0 never gets there. There is no honest wait to report, so keep
   # the flat second this bucket always answered with.
-  defp retry_after(deficit, rate) when rate > 0, do: max(ceil(deficit * 1000 / rate), 1)
+  defp retry_after(deficit, rate) when rate > 0, do: max(ceil(deficit / rate), 1)
   defp retry_after(_deficit, _rate), do: 1000
 
   @doc """
@@ -228,13 +240,9 @@ defmodule Hammer.Atomic.TokenBucket do
   @spec get(table :: atom(), key :: term()) :: non_neg_integer()
   def get(table, key) do
     case :ets.lookup(table, key) do
-      [] ->
-        0
-
       [{_, atomic}] ->
-        packed = :atomics.get(atomic, 1)
-        {_timestamp, fill} = unpack(packed)
-        fill
+        {_clock, level} = unpack(:atomics.get(atomic, 1))
+        div(level, 1000)
 
       _ ->
         0
@@ -244,9 +252,7 @@ defmodule Hammer.Atomic.TokenBucket do
   @doc false
   @spec normalize_entry(key :: term(), atomic :: reference()) :: map()
   def normalize_entry(key, atomic) do
-    packed = :atomics.get(atomic, 1)
-    {_timestamp, fill} = unpack(packed)
-    last_update = :atomics.get(atomic, 2)
-    %{key: key, value: fill, expired_at: last_update * 1000}
+    {_clock, level} = unpack(:atomics.get(atomic, 1))
+    %{key: key, value: div(level, 1000), expired_at: :atomics.get(atomic, 2)}
   end
 end

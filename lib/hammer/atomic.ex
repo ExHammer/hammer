@@ -238,7 +238,8 @@ defmodule Hammer.Atomic do
     case config.algorithm_module do
       Hammer.Atomic.FixWindow -> clean_fix_window(config)
       Hammer.Atomic.FixWindowPerKey -> clean_fix_window(config)
-      _ -> clean_bucket(config)
+      Hammer.Atomic.TokenBucket -> clean_bucket(config, 1)
+      _ -> clean_bucket(config, 1000)
     end
 
     schedule(config.clean_period)
@@ -265,9 +266,11 @@ defmodule Hammer.Atomic do
   end
 
   # TokenBucket and LeakyBucket store last_update in seconds in slot 2
-  defp clean_bucket(config) do
-    now = System.system_time(:second)
-    older_than = now - div(config.key_older_than, 1000)
+  # `unit` is the number of milliseconds in one tick of the algorithm's
+  # last-update clock (slot 2): the token bucket keeps milliseconds, the leaky
+  # bucket whole seconds.
+  defp clean_bucket(config, unit) do
+    older_than = div(now() - config.key_older_than, unit)
     algo_module = config.algorithm_module
 
     expired_terms =

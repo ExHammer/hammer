@@ -130,7 +130,10 @@ defmodule Hammer.ETS.TokenBucket do
           {capacity, now}
       end
 
-    elapsed = now - last_update
+    # The stored clock can be ahead of `now` (a concurrent hit read the time
+    # later, or the wall clock stepped back). That is no time elapsed, not a
+    # negative refill.
+    elapsed = max(now - last_update, 0)
     new_tokens = trunc(elapsed * refill_rate / 1000)
 
     current_tokens = min(capacity, current_level + new_tokens)
@@ -150,11 +153,16 @@ defmodule Hammer.ETS.TokenBucket do
       # applies when tokens actually accrued: if the bucket merely sat at
       # capacity and `new_tokens` is 0, nothing overflowed, and the elapsed
       # time is still owed to the level this hit is about to draw down.
+      #
+      # The step is not rounded to a whole millisecond, so the stored clock is
+      # a float. Rounding it down credits the same time twice: at 1500
+      # tokens/sec a token is worth 0.67ms, a step of trunc(0.67) == 0 never
+      # moves the clock, and every hit in that millisecond is paid again.
       new_last_update =
         if current_tokens == capacity and new_tokens > 0 do
           now
         else
-          last_update + trunc(new_tokens * 1000 / refill_rate)
+          last_update + new_tokens * 1000 / refill_rate
         end
 
       :ets.insert(table, {key, final_level, new_last_update})
@@ -220,7 +228,7 @@ defmodule Hammer.ETS.TokenBucket do
   @spec normalize_expired(expired :: list()) :: list(map())
   def normalize_expired(expired) do
     Enum.map(expired, fn {key, level, last_update_ms} ->
-      %{key: key, value: level, expired_at: last_update_ms}
+      %{key: key, value: level, expired_at: trunc(last_update_ms)}
     end)
   end
 end

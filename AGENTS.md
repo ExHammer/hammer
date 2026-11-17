@@ -93,9 +93,9 @@ Each algorithm module is plain functions over a table/atomic, not a process. It 
 Notes by algorithm:
 
 - Bucket algorithms (`LeakyBucket`, `TokenBucket`) take `hit(table, key, rate, capacity, cost)` rather than `(scale, limit)`; the generated `hit/3,4` just forwards positional args, so the meaning of args 2-3 changes with the algorithm. They do not export `inc/set/expires_at`.
-- `TokenBucket` (ETS and Atomic) uses millisecond refill resolution and carries the sub-token remainder across hits. `LeakyBucket` (both backends) counts in whole seconds.
-- Atomic `TokenBucket`/`LeakyBucket` pack state into a 64-bit atomic and update with `:atomics.compare_exchange` (CAS loop). The token bucket's packed clock is the low 32 bits of the millisecond time, read as a signed difference; slot 2 (unwrapped seconds) covers buckets idle longer than ~24.8 days. The atomic reference is stored in ETS; it must be initialized before being inserted (7.5.0 fix, #202).
-- Atomic `FixWindowPerKey` never resets an atomic in place: an expired window is removed with `:ets.delete_object` and a fresh pre-filled atomic is published with `:ets.insert_new`. Do not reintroduce a lock in the atomic; a killed holder would hang the key.
+- `TokenBucket` (ETS and Atomic) refills by the millisecond and never rounds the time it credits: ETS advances a float clock by exactly `new_tokens * 1000 / refill_rate`, Atomic keeps the level in thousandths of a token. Rounding that step down re-credits elapsed time and switches the limiter off above 1000 tokens/sec; both test files have a tight-loop bound test for it. `LeakyBucket` (both backends) counts in whole seconds and clamps negative elapsed time to 0; its deny wait lives in `Hammer.BucketUtils.leak_wait/3`.
+- Atomic `TokenBucket`/`LeakyBucket` pack state into a 64-bit atomic and update with `:atomics.compare_exchange` (CAS loop). The token bucket packs the low 22 bits of the millisecond clock (read as a signed difference) with the level in thousandths of a token (42 bits); slot 2 holds the full millisecond time of the last allowed hit and covers buckets idle for 35 minutes or more. The leaky bucket packs whole seconds and the level, 32 bits each, with seconds in slot 2. The atomic reference is stored in ETS; it must be initialized before being inserted (7.5.0 fix, #202).
+- Atomic `FixWindowPerKey` never resets an atomic in place: an expired window is removed with `:ets.delete_object` and a fresh pre-filled atomic is published with `:ets.insert_new`. Do not reintroduce a lock in the atomic; a killed holder would hang the key. `set` writes into a live window's ref in place so in-flight hits are not orphaned.
 - `Hammer.ETS` and `Hammer.Atomic` map algorithm module to a name via private `algorithm_name/1` for `before_clean`; add a clause when adding an algorithm.
 
 ### Supporting modules
@@ -106,6 +106,7 @@ lib/
   hammer/ets.ex                ETS backend: __before_compile__, GenServer (table owner + :clean timer), now/0, update_counter/4
   hammer/atomic.ex             Atomic backend: same shape, option :algorithm_module instead of :algorithm
   hammer/clean_utils.ex        @moduledoc false; invoke_before_clean/3 (rescues, logs warning), delete_expired/2
+  hammer/bucket_utils.ex       @moduledoc false; leak_wait/3 (deny wait shared by the two leaky buckets)
   hammer/ets/*.ex              fix_window, fix_window_per_key, sliding_window, leaky_bucket, token_bucket
   hammer/atomic/*.ex           fix_window, fix_window_per_key, leaky_bucket, token_bucket
   mix/tasks/hammer.install.ex  Igniter installer (Mix.Tasks.Hammer.Install); compiled only when igniter is available

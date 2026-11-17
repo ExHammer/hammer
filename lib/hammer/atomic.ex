@@ -86,7 +86,14 @@ defmodule Hammer.Atomic do
           Hammer.Atomic.FixWindowPerKey
 
         :sliding_window ->
-          Hammer.Atomic.SlidingWindow
+          raise ArgumentError, """
+          :sliding_window is not available for the Atomic backend. A sliding window keeps
+          one entry per hit, which a fixed set of atomic counters cannot hold.
+
+          Use the ETS backend instead (the Redis backend supports it too):
+
+            use Hammer, backend: :ets, algorithm: :sliding_window
+          """
 
         :leaky_bucket ->
           Hammer.Atomic.LeakyBucket
@@ -96,12 +103,12 @@ defmodule Hammer.Atomic do
 
         _module ->
           raise ArgumentError, """
-          Hammer requires a valid backend to be specified. Must be one of: :atomic, :fix_window, :fix_window_per_key, :sliding_window, :leaky_bucket, :token_bucket.
+          Hammer requires a valid algorithm to be specified for the Atomic backend. Must be one of: :fix_window, :fix_window_per_key, :leaky_bucket, :token_bucket.
           If none is specified, :fix_window is used.
 
           Example:
 
-            use Hammer, backend: :atomic
+            use Hammer, backend: :atomic, algorithm: :token_bucket
           """
       end
 

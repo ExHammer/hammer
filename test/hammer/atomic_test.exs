@@ -76,4 +76,22 @@ defmodule Hammer.AtomicTest do
       assert RateAtomicLimit.get(key, scale) == count
     end
   end
+
+  describe "algorithm option" do
+    test ":sliding_window is rejected with a pointer to the backends that have it" do
+      assert_raise ArgumentError, ~r/:sliding_window is not available.*backend: :ets/s, fn ->
+        defmodule SlidingWindowLimit do
+          use Hammer, backend: :atomic, algorithm: :sliding_window
+        end
+      end
+    end
+
+    test "an unknown algorithm lists the ones the Atomic backend supports" do
+      assert_raise ArgumentError, ~r/valid algorithm.*:token_bucket/s, fn ->
+        defmodule UnknownAlgorithmLimit do
+          use Hammer, backend: :atomic, algorithm: :nope
+        end
+      end
+    end
+  end
 end

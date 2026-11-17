@@ -105,15 +105,17 @@ defmodule Hammer.Atomic.TokenBucket do
     ]
   end
 
-  # Pack timestamp (seconds) and fill level into one 64-bit value for atomic CAS.
-  # High 32 bits: timestamp, Low 32 bits: fill level
+  # Pack the clock and the fill level into one 64-bit value for atomic CAS.
+  # High 32 bits: low 32 bits of the millisecond clock, Low 32 bits: fill level
+  @clock_mask 0xFFFFFFFF
+  @clock_half 0x80000000
   @compile {:inline, pack: 2, unpack: 1}
   defp pack(timestamp, fill) do
-    (timestamp &&& 0xFFFFFFFF) <<< 32 ||| (fill &&& 0xFFFFFFFF)
+    (timestamp &&& @clock_mask) <<< 32 ||| (fill &&& 0xFFFFFFFF)
   end
 
   defp unpack(packed) do
-    timestamp = packed >>> 32 &&& 0xFFFFFFFF
+    timestamp = packed >>> 32 &&& @clock_mask
     fill = packed &&& 0xFFFFFFFF
     {timestamp, fill}
   end
@@ -122,8 +124,7 @@ defmodule Hammer.Atomic.TokenBucket do
   Checks if a key is allowed to perform an action, and consume the bucket by the given amount.
 
   On `{:deny, retry_after}`, `retry_after` is the time in milliseconds until the bucket
-  holds enough tokens to pay `cost`. Refill is counted in whole seconds, so the value
-  runs to the second boundary at which that happens.
+  holds enough tokens to pay `cost`.
   """
   @spec hit(
           table :: atom(),
@@ -133,7 +134,7 @@ defmodule Hammer.Atomic.TokenBucket do
           cost :: pos_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, refill_rate, capacity, cost \\ 1) do
-    now = System.system_time(:second)
+    now = System.system_time(:millisecond)
 
     case :ets.lookup(table, key) do
       [{_, atomic}] ->
@@ -146,7 +147,7 @@ defmodule Hammer.Atomic.TokenBucket do
         # at timestamp 0.
         atomic = :atomics.new(2, signed: false)
         :atomics.put(atomic, 1, pack(now, capacity))
-        :atomics.put(atomic, 2, now)
+        :atomics.put(atomic, 2, div(now, 1000))
 
         :ets.insert_new(table, {key, atomic})
 
@@ -158,17 +159,32 @@ defmodule Hammer.Atomic.TokenBucket do
     current_packed = :atomics.get(atomic, 1)
     {last_update, current_fill} = unpack(current_packed)
 
-    new_tokens = trunc((now - last_update) * refill_rate)
+    elapsed = elapsed(atomic, now, last_update)
+    new_tokens = trunc(elapsed * refill_rate / 1000)
     current_tokens = min(capacity, current_fill + new_tokens)
 
     if current_tokens >= cost do
       final_level = current_tokens - cost
-      new_packed = pack(now, final_level)
+
+      # Advance the clock only by the time whose tokens were credited, so the
+      # sub-token remainder carries into the next hit; stamping `now` would
+      # discard it, and a caller hitting faster than one token period would
+      # never refill. The exception is a refill that overflowed the bucket:
+      # the surplus is discarded, so the clock snaps to `now` or an idle
+      # bucket banks unbounded credit.
+      new_last_update =
+        cond do
+          new_tokens == 0 -> last_update
+          current_tokens == capacity -> now
+          true -> last_update + trunc(new_tokens * 1000 / refill_rate)
+        end
+
+      new_packed = pack(new_last_update, final_level)
 
       case :atomics.compare_exchange(atomic, 1, current_packed, new_packed) do
         :ok ->
           # Update slot 2 for cleanup tracking (non-critical, just for age-based cleanup)
-          :atomics.put(atomic, 2, now)
+          :atomics.put(atomic, 2, div(now, 1000))
           {:allow, final_level}
 
         _current_value ->
@@ -176,23 +192,35 @@ defmodule Hammer.Atomic.TokenBucket do
           do_hit(atomic, now, refill_rate, capacity, cost)
       end
     else
-      {:deny, retry_after(now, cost - current_tokens, refill_rate)}
+      {:deny, retry_after(cost - current_tokens, refill_rate)}
     end
   end
 
-  # Milliseconds until a hit would be allowed, given the bucket must gain `units`
-  # more. The bucket counts in whole seconds, so the refill lands when the wall
-  # clock reaches second `now + seconds`; the wait runs to that boundary rather
-  # than a full `seconds * 1000`, and sleeping it is always sufficient.
+  # The packed clock only has the low 32 bits of the time, so the difference
+  # is taken modulo 2^32 and read as signed. A negative difference means a
+  # concurrent hit that read the time after us has already stored a later
+  # clock: no time has passed as far as this bucket is concerned.
   #
-  # A rate of 0 never gets there. There is no honest wait to report, so keep
-  # the flat second these buckets always answered with.
-  defp retry_after(now, units, rate) when rate > 0 do
-    seconds = ceil(units / rate)
-    max((now + seconds) * 1000 - System.system_time(:millisecond), 1)
+  # That leaves about 24.8 days before a real gap stops fitting. Slot 2 holds
+  # the whole-second time of the last allowed hit, unwrapped, so a bucket idle
+  # for longer than that is recognised there and its true idle time is used.
+  defp elapsed(atomic, now, last_update) do
+    idle = now - :atomics.get(atomic, 2) * 1000
+
+    case now - last_update &&& @clock_mask do
+      _wrapped when idle >= @clock_half -> idle
+      elapsed when elapsed < @clock_half -> elapsed
+      _behind -> 0
+    end
   end
 
-  defp retry_after(_now, _units, _rate), do: 1000
+  # Milliseconds until the bucket has gained `deficit` more tokens, rounded up
+  # so that sleeping it is always sufficient.
+  #
+  # A rate of 0 never gets there. There is no honest wait to report, so keep
+  # the flat second this bucket always answered with.
+  defp retry_after(deficit, rate) when rate > 0, do: max(ceil(deficit * 1000 / rate), 1)
+  defp retry_after(_deficit, _rate), do: 1000
 
   @doc """
   Returns the current level of the bucket for a given key.

@@ -93,8 +93,9 @@ Each algorithm module is plain functions over a table/atomic, not a process. It 
 Notes by algorithm:
 
 - Bucket algorithms (`LeakyBucket`, `TokenBucket`) take `hit(table, key, rate, capacity, cost)` rather than `(scale, limit)`; the generated `hit/3,4` just forwards positional args, so the meaning of args 2-3 changes with the algorithm. They do not export `inc/set/expires_at`.
-- ETS `TokenBucket` uses millisecond refill resolution and carries the sub-token remainder across hits.
-- Atomic `TokenBucket`/`LeakyBucket` pack state into a 64-bit atomic and update with `:atomics.compare_exchange` (CAS loop). The atomic reference is stored in ETS; it must be initialized before being inserted (7.5.0 fix, #202).
+- `TokenBucket` (ETS and Atomic) uses millisecond refill resolution and carries the sub-token remainder across hits. `LeakyBucket` (both backends) counts in whole seconds.
+- Atomic `TokenBucket`/`LeakyBucket` pack state into a 64-bit atomic and update with `:atomics.compare_exchange` (CAS loop). The token bucket's packed clock is the low 32 bits of the millisecond time, read as a signed difference; slot 2 (unwrapped seconds) covers buckets idle longer than ~24.8 days. The atomic reference is stored in ETS; it must be initialized before being inserted (7.5.0 fix, #202).
+- Atomic `FixWindowPerKey` never resets an atomic in place: an expired window is removed with `:ets.delete_object` and a fresh pre-filled atomic is published with `:ets.insert_new`. Do not reintroduce a lock in the atomic; a killed holder would hang the key.
 - `Hammer.ETS` and `Hammer.Atomic` map algorithm module to a name via private `algorithm_name/1` for `before_clean`; add a clause when adding an algorithm.
 
 ### Supporting modules
@@ -182,17 +183,18 @@ Release (maintainers): bump `@version` in `mix.exs`, add a `## X.Y.Z - YYYY-MM-D
 - Do not add runtime dependencies or a global application config; Hammer deliberately has none (limits are given per call).
 - Do not put GenServer calls or table creation on the `hit` path.
 - Do not change a public callback signature or `{:allow, n} | {:deny, ms}` return shape without a major-version decision and a sibling-backend check.
-- Do not wire `:sliding_window` into the Atomic backend by only adding a module name; no such module exists (see Gotchas).
+- Do not wire `:sliding_window` into the Atomic backend by only adding a module name; no such module exists and the macro raises for it (see Gotchas).
 - Do not commit `IO.inspect`, `dbg`, `IEx.pry`, secrets, `erl_crash.dump`, or generated `cover/`, `doc/`, `_build/`, `deps/` (all gitignored).
 - Do not tag or publish to Hex unless explicitly asked.
 - Do not edit the sibling backend repos from here.
 
 ## Gotchas
 
-- **Atomic `:sliding_window`**: `Hammer.Atomic.__before_compile__` has a `:sliding_window` clause pointing to `Hammer.Atomic.SlidingWindow`, but `lib/hammer/atomic/` has no such file. `Code.ensure_loaded!/1` will raise at compile time of the user's module. Docs list only four Atomic algorithms. Sliding window is ETS-only (and Redis).
+- **Atomic `:sliding_window`**: not implemented. `Hammer.Atomic.__before_compile__` raises an `ArgumentError` pointing to the ETS backend. Sliding window is ETS-only (and Redis).
 - **`:ets` / `:atomic` as `:algorithm` value** are accepted as aliases for `:fix_window` in the macros; they are not meaningful names.
 - **`hit/3,4` arg meaning varies**: for `:token_bucket`/`:leaky_bucket` the second and third args are refill/leak rate and capacity, not scale and limit. Docs for each algorithm explain this.
-- **Token bucket deny value**: since 7.5.0 `{:deny, ms}` is the real time until enough tokens exist (can be small, e.g. 19). Callers should round up and floor at 1 s for `retry-after` headers.
+- **Bucket deny value**: `{:deny, ms}` is the real time until the hit would be allowed, for token and leaky buckets in both backends (can be small, e.g. 19, or many seconds). Callers should round up and floor at 1 s for `retry-after` headers. A rate of 0 answers a flat 1000 in the Atomic buckets and the ETS leaky bucket.
+- **Leaky bucket cost**: a hit is allowed only if `level + cost <= capacity`; a denied hit adds nothing.
 - **Default `key_older_than`** is 24 h in both `start_link` implementations; the `Hammer.ETS` moduledoc claims 1 hour. Trust the code.
 - **`mix.exs` says `elixir: "~> 1.14"`** but 7.2.0 dropped 1.14 and CI tests 1.17+. Older versions are unsupported in practice.
 - **`dialyzer: [plt_add_apps: [:mix]]`** exists because the installer task references Mix; dialyzer is not run in CI.

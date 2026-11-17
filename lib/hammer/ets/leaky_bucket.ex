@@ -102,6 +102,10 @@ defmodule Hammer.ETS.LeakyBucket do
 
   @doc """
   Checks if a key is allowed to perform an action, and increment the counter by the given amount.
+
+  On `{:deny, retry_after}`, `retry_after` is the time in milliseconds until the bucket
+  has leaked enough for a hit to be allowed. Leaking is counted in whole seconds, so the
+  value runs to the second boundary at which that happens.
   """
   @spec hit(
           table :: atom(),
@@ -139,9 +143,24 @@ defmodule Hammer.ETS.LeakyBucket do
       :ets.insert(table, {key, final_level, now})
       {:allow, final_level}
     else
-      {:deny, 1000}
+      # A hit is allowed once the level is strictly below capacity.
+      {:deny, retry_after(now, current_fill - capacity + 1, leak_rate)}
     end
   end
+
+  # Milliseconds until a hit would be allowed, given the bucket must leak `units`
+  # more. The bucket counts in whole seconds, so the leak lands when the wall
+  # clock reaches second `now + seconds`; the wait runs to that boundary rather
+  # than a full `seconds * 1000`, and sleeping it is always sufficient.
+  #
+  # A rate of 0 never gets there. There is no honest wait to report, so keep
+  # the flat second these buckets always answered with.
+  defp retry_after(now, units, rate) when rate > 0 do
+    seconds = ceil(units / rate)
+    max((now + seconds) * 1000 - System.system_time(:millisecond), 1)
+  end
+
+  defp retry_after(_now, _units, _rate), do: 1000
 
   @doc """
   Returns the current level of the bucket for a given key.

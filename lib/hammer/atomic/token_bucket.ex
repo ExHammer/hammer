@@ -120,6 +120,10 @@ defmodule Hammer.Atomic.TokenBucket do
 
   @doc """
   Checks if a key is allowed to perform an action, and consume the bucket by the given amount.
+
+  On `{:deny, retry_after}`, `retry_after` is the time in milliseconds until the bucket
+  holds enough tokens to pay `cost`. Refill is counted in whole seconds, so the value
+  runs to the second boundary at which that happens.
   """
   @spec hit(
           table :: atom(),
@@ -172,9 +176,23 @@ defmodule Hammer.Atomic.TokenBucket do
           do_hit(atomic, now, refill_rate, capacity, cost)
       end
     else
-      {:deny, 1000}
+      {:deny, retry_after(now, cost - current_tokens, refill_rate)}
     end
   end
+
+  # Milliseconds until a hit would be allowed, given the bucket must gain `units`
+  # more. The bucket counts in whole seconds, so the refill lands when the wall
+  # clock reaches second `now + seconds`; the wait runs to that boundary rather
+  # than a full `seconds * 1000`, and sleeping it is always sufficient.
+  #
+  # A rate of 0 never gets there. There is no honest wait to report, so keep
+  # the flat second these buckets always answered with.
+  defp retry_after(now, units, rate) when rate > 0 do
+    seconds = ceil(units / rate)
+    max((now + seconds) * 1000 - System.system_time(:millisecond), 1)
+  end
+
+  defp retry_after(_now, _units, _rate), do: 1000
 
   @doc """
   Returns the current level of the bucket for a given key.

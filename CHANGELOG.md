@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix `LeakyBucket` (ETS and Atomic backends) and `TokenBucket` (Atomic backend) returning a flat `{:deny, 1000}`; they now return the real time in milliseconds until the hit would be allowed, as the ETS `TokenBucket` has since 7.5.0. These buckets count in whole seconds, so the value runs to the second boundary at which the bucket has leaked or refilled enough. **Behaviour change:** the value is no longer always 1000. It can be much larger (e.g. up to 144000 for a bucket 144 over capacity at `leak_rate: 1`) or smaller (down to 1 when the next second is about to start). Code that converts it to a `retry-after` header should round up and floor at 1 second. A rate of 0 still answers `{:deny, 1000}`. (#221)
+
 ## 7.5.1 - 2026-10-26
 
 - Fix `SlidingWindow` ETS backend counting denied hits. A denied hit stayed in the window, so callers that slept for `retry_after` and retried at staggered moments kept the window full and were denied forever. Denied hits are now removed from the window. **Behaviour change:** a client that keeps hitting after being denied no longer extends its own block; the ETS backend now matches the Redis backend here. (#210)

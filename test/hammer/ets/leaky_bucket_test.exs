@@ -1,5 +1,6 @@
 defmodule Hammer.ETS.LeakyBucketTest do
   use ExUnit.Case, async: true
+  import Hammer.ClockTestHelpers
   alias Hammer.ETS.LeakyBucket
 
   defmodule RateLimitLeakyBucket do
@@ -39,8 +40,10 @@ defmodule Hammer.ETS.LeakyBucketTest do
       assert {:allow, 1} = LeakyBucket.hit(table, key, leak_rate, capacity, 1)
       assert {:allow, 2} = LeakyBucket.hit(table, key, leak_rate, capacity, 1)
 
-      assert {:deny, 1000} =
+      assert {:deny, retry_after} =
                LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+
+      assert retry_after in 1..1000
 
       assert {:deny, _retry_after} =
                LeakyBucket.hit(table, key, leak_rate, capacity, 1)
@@ -63,6 +66,55 @@ defmodule Hammer.ETS.LeakyBucketTest do
 
       assert {:deny, _retry_after} =
                LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+    end
+
+    test "the deny wait is the real time until the bucket leaks below capacity",
+         %{table: table} do
+      await_fresh_second()
+      key = "key"
+      leak_rate = 1
+      capacity = 2
+
+      # 11 in a bucket of 2: ten more seconds of leaking before a hit is allowed.
+      :ets.insert(table, {key, 11, System.system_time(:second)})
+
+      assert {:deny, retry_after} = LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+      assert retry_after in 9001..10_000
+
+      # A faster leak shortens the wait: ceil(10 / 5) == 2 seconds.
+      assert {:deny, retry_after_fast} = LeakyBucket.hit(table, key, 5, capacity, 1)
+      assert retry_after_fast in 1001..2000
+    end
+
+    test "the advertised wait is sufficient across rates, capacities and fill levels",
+         %{table: table} do
+      await_fresh_second()
+
+      for leak_rate <- [1, 2, 3, 7, 55],
+          capacity <- [1, 10, 1000],
+          overfill <- [0, 1, 5, capacity] do
+        key = "sufficient:#{leak_rate}:#{capacity}:#{overfill}"
+        :ets.insert(table, {key, capacity + overfill, System.system_time(:second)})
+
+        assert {:deny, wait} = LeakyBucket.hit(table, key, leak_rate, capacity, 1)
+        assert wait >= 1
+
+        # Rewind the stored clock by the advertised wait (in the whole seconds
+        # the bucket counts in) -- the state a caller finds after sleeping it.
+        [{^key, level, last_update}] = :ets.lookup(table, key)
+        :ets.insert(table, {key, level, last_update - ceil(wait / 1000)})
+
+        assert {:allow, _} = LeakyBucket.hit(table, key, leak_rate, capacity, 1),
+               "wait of #{wait}ms was too short for rate=#{leak_rate} " <>
+                 "cap=#{capacity} overfill=#{overfill}"
+      end
+    end
+
+    test "a leak rate of 0 still denies with a flat second", %{table: table} do
+      key = "key"
+      :ets.insert(table, {key, 5, System.system_time(:second)})
+
+      assert {:deny, 1000} = LeakyBucket.hit(table, key, 0, 2, 1)
     end
   end
 

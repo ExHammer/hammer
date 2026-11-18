@@ -68,6 +68,29 @@ defmodule Hammer.ETS.TokenBucketTest do
     # `now` and assert the value written back, so they are deterministic: the
     # stored timestamp is derived from `last_update` plus the time actually
     # credited, never from when the test happened to run.
+    test "a caller hitting in a tight loop is held to the refill rate", %{table: table} do
+      # Each credited token must move the refill clock by exactly its own
+      # worth of time. Rounding that step down hands the same elapsed time out
+      # again on the next hit: at 1500 tokens/sec a token is worth 0.67ms, a
+      # step of trunc(0.67) == 0 never moves the clock, and the limiter is off.
+      for refill_rate <- [600, 1500, 2500] do
+        key = "tight:#{refill_rate}"
+        capacity = 10
+        # Measured on the wall clock the bucket itself reads, with 2ms of
+        # slack: both ends are truncated to a whole millisecond.
+        started = System.system_time(:millisecond)
+        deadline = System.monotonic_time(:millisecond) + 200
+
+        allowed = count_allowed(table, key, refill_rate, capacity, deadline, 0)
+
+        elapsed = System.system_time(:millisecond) - started + 2
+        bound = capacity + ceil(refill_rate * elapsed / 1000)
+
+        assert allowed <= bound,
+               "allowed #{allowed} hits in #{elapsed}ms at rate=#{refill_rate}, bound is #{bound}"
+      end
+    end
+
     test "carries the sub-token remainder instead of discarding it", %{table: table} do
       key = "key"
       # One token every ~18.18ms.
@@ -78,12 +101,12 @@ defmodule Hammer.ETS.TokenBucketTest do
       seeded_at = now - 30
       :ets.insert(table, {key, 5, seeded_at})
 
-      # 30ms accrues trunc(30 * 55 / 1000) == 1 token, which is worth 18ms.
+      # 30ms accrues trunc(30 * 55 / 1000) == 1 token, which is worth 18.18ms.
       # The remaining ~12ms must stay on the clock for the next hit.
       assert {:allow, 5} = TokenBucket.hit(table, key, refill_rate, capacity, 1)
 
       assert [{^key, 5, stored_at}] = :ets.lookup(table, key)
-      assert stored_at == seeded_at + 18
+      assert_in_delta stored_at, seeded_at + 1000 / 55, 0.001
     end
 
     test "does not reset the clock when a full bucket accrued no new tokens", %{table: table} do
@@ -238,6 +261,33 @@ defmodule Hammer.ETS.TokenBucketTest do
       assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, 3)
     end
 
+    test "a stored clock ahead of the caller's takes no tokens away", %{table: table} do
+      key = "key"
+
+      # A concurrent hit that read the time later, or a wall clock that stepped
+      # back, leaves the stored clock ahead of ours. Negative elapsed time must
+      # not be turned into a negative refill.
+      :ets.insert(table, {key, 5, System.system_time(:millisecond) + 500})
+
+      assert {:allow, 4} = TokenBucket.hit(table, key, 1000, 10, 1)
+    end
+
+    test "the deny wait covers a stored clock ahead of the caller's", %{table: table} do
+      key = "key"
+
+      # A wall clock that stepped back leaves the stored clock ahead. Nothing
+      # refills until the caller's time catches up with it, so that stretch is
+      # part of the wait.
+      :ets.insert(table, {key, 0, System.system_time(:millisecond) + 40})
+
+      assert {:deny, wait} = TokenBucket.hit(table, key, 1000, 10, 1)
+      assert wait in 30..41
+
+      # Retried against the same bucket, the advertised wait is enough.
+      Process.sleep(wait)
+      assert {:allow, _} = TokenBucket.hit(table, key, 1000, 10, 1)
+    end
+
     test "the advertised wait is sufficient across rates, costs and deficits", %{table: table} do
       # The refill path truncates DOWN and the deny path rounds UP, so it is
       # worth pinning that the two cannot conspire to hand a caller a wait
@@ -251,15 +301,16 @@ defmodule Hammer.ETS.TokenBucketTest do
           starting_level <- [0, div(cost, 2)],
           starting_level < cost do
         key = "sufficient:#{refill_rate}:#{capacity}:#{cost}:#{starting_level}"
-        :ets.insert(table, {key, starting_level, System.system_time(:millisecond)})
+        # A clock a minute ahead: the bucket sees no time pass, however long
+        # the test is paused, so a tick between seed and hit cannot refill it.
+        frozen = System.system_time(:millisecond) + :timer.minutes(1)
+        :ets.insert(table, {key, starting_level, frozen})
 
         assert {:deny, wait} = TokenBucket.hit(table, key, refill_rate, capacity, cost)
         assert wait >= 1
 
-        # Rewind the stored clock by exactly the advertised wait -- the state
-        # the caller would find itself in having slept precisely that long.
-        [{^key, level, last_update}] = :ets.lookup(table, key)
-        :ets.insert(table, {key, level, last_update - wait})
+        # The same bucket as a caller finds it having slept the advertised wait.
+        :ets.insert(table, {key, starting_level, frozen - wait})
 
         assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, cost),
                "wait of #{wait}ms was too short for rate=#{refill_rate} " <>
@@ -325,6 +376,20 @@ defmodule Hammer.ETS.TokenBucketTest do
 
       assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, 3)
       assert TokenBucket.get(table, key) == 3
+    end
+  end
+
+  defp count_allowed(table, key, refill_rate, capacity, deadline, allowed) do
+    allowed =
+      case TokenBucket.hit(table, key, refill_rate, capacity, 1) do
+        {:allow, _} -> allowed + 1
+        {:deny, _} -> allowed
+      end
+
+    if System.monotonic_time(:millisecond) < deadline do
+      count_allowed(table, key, refill_rate, capacity, deadline, allowed)
+    else
+      allowed
     end
   end
 end

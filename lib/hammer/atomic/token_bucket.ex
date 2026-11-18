@@ -105,21 +105,39 @@ defmodule Hammer.Atomic.TokenBucket do
     ]
   end
 
-  # Pack timestamp (seconds) and fill level into one 64-bit value for atomic CAS.
-  # High 32 bits: timestamp, Low 32 bits: fill level
+  # The bucket is one 64-bit value, so that a hit is a single atomic CAS:
+  #
+  #   high 22 bits: low 22 bits of the millisecond clock
+  #   low 42 bits:  level in thousandths of a token
+  #
+  # Thousandths make the refill exact: `elapsed_ms * refill_rate` is a whole
+  # number of them, so nothing is rounded and no time is ever credited twice.
+  # 42 bits hold any capacity up to 2^32 tokens.
+  #
+  # 22 bits of clock wrap every 70 minutes. Slot 2 holds the full millisecond
+  # time of that clock, so a gap of any length can be measured: see `elapsed/3`.
+  @clock_bits 22
+  @clock_mask 0x3FFFFF
+  @clock_half 0x200000
+  @level_bits 42
+  @level_mask 0x3FFFFFFFFFF
+  # Below this, slot 2 cannot be a millisecond time (it would be 1974): it is
+  # the whole seconds that 7.5.1 and earlier kept there.
+  @legacy_stamp 0x2000000000
   @compile {:inline, pack: 2, unpack: 1}
-  defp pack(timestamp, fill) do
-    (timestamp &&& 0xFFFFFFFF) <<< 32 ||| (fill &&& 0xFFFFFFFF)
+  defp pack(clock, level) do
+    (clock &&& @clock_mask) <<< @level_bits ||| (level &&& @level_mask)
   end
 
   defp unpack(packed) do
-    timestamp = packed >>> 32 &&& 0xFFFFFFFF
-    fill = packed &&& 0xFFFFFFFF
-    {timestamp, fill}
+    {packed >>> (64 - @clock_bits), packed &&& @level_mask}
   end
 
   @doc """
   Checks if a key is allowed to perform an action, and consume the bucket by the given amount.
+
+  On `{:deny, retry_after}`, `retry_after` is the time in milliseconds until the bucket
+  holds enough tokens to pay `cost`. A `cost` larger than `capacity` is never allowed.
   """
   @spec hit(
           table :: atom(),
@@ -129,7 +147,7 @@ defmodule Hammer.Atomic.TokenBucket do
           cost :: pos_integer()
         ) :: {:allow, non_neg_integer()} | {:deny, non_neg_integer()}
   def hit(table, key, refill_rate, capacity, cost \\ 1) do
-    now = System.system_time(:second)
+    now = System.system_time(:millisecond)
 
     case :ets.lookup(table, key) do
       [{_, atomic}] ->
@@ -141,7 +159,7 @@ defmodule Hammer.Atomic.TokenBucket do
         # an uninitialized (zero) packed value would look like an empty bucket
         # at timestamp 0.
         atomic = :atomics.new(2, signed: false)
-        :atomics.put(atomic, 1, pack(now, capacity))
+        :atomics.put(atomic, 1, pack(now, capacity * 1000))
         :atomics.put(atomic, 2, now)
 
         :ets.insert_new(table, {key, atomic})
@@ -151,30 +169,98 @@ defmodule Hammer.Atomic.TokenBucket do
   end
 
   defp do_hit(atomic, now, refill_rate, capacity, cost) do
+    # Slot 2 is read first: see `elapsed/3`.
+    stamp = :atomics.get(atomic, 2)
     current_packed = :atomics.get(atomic, 1)
-    {last_update, current_fill} = unpack(current_packed)
+    {clock, level} = unpack(current_packed)
 
-    new_tokens = trunc((now - last_update) * refill_rate)
-    current_tokens = min(capacity, current_fill + new_tokens)
+    elapsed = elapsed(now, clock, stamp)
+    level = min(capacity * 1000, level + trunc(max(elapsed, 0) * refill_rate))
+    price = cost * 1000
 
-    if current_tokens >= cost do
-      final_level = current_tokens - cost
-      new_packed = pack(now, final_level)
+    if level >= price do
+      final_level = level - price
+
+      # All of `elapsed` was credited, so the clock moves to `now`. With no
+      # time elapsed it stays put: the stored clock may be ahead of `now`, and
+      # winding it back would credit that stretch a second time.
+      new_clock = if elapsed > 0, do: now, else: clock
+      new_packed = pack(new_clock, final_level)
 
       case :atomics.compare_exchange(atomic, 1, current_packed, new_packed) do
         :ok ->
-          # Update slot 2 for cleanup tracking (non-critical, just for age-based cleanup)
-          :atomics.put(atomic, 2, now)
-          {:allow, final_level}
+          advance_stamp(atomic, now, elapsed)
+          {:allow, div(final_level, 1000)}
 
         _current_value ->
           # CAS failed, another process modified the value; retry
           do_hit(atomic, now, refill_rate, capacity, cost)
       end
     else
-      {:deny, 1000}
+      # Nothing refills until our time has caught up with a clock ahead of it.
+      {:deny, retry_after(price - level, refill_rate, max(-elapsed, 0))}
     end
   end
+
+  # Milliseconds since the bucket's clock; negative when that clock is ahead
+  # of `now` (a concurrent hit read the time after us, or the wall clock
+  # stepped back).
+  #
+  # The packed clock has only the low 22 bits of the time. Slot 2 holds the
+  # full time of the same clock, so when the two agree the difference is exact
+  # however long the bucket sat idle.
+  #
+  # They are two writes, the packed state first. When they disagree a hit has
+  # moved the packed clock and not yet slot 2, so the packed clock is recent
+  # and its 22 bits are enough: the difference is taken modulo 2^22 and read
+  # as signed. Trusting slot 2 there would credit the whole idle period a
+  # second time, on top of the refill already in the packed level.
+  #
+  # Slot 2 is read before the packed state for the same reason. Read the other
+  # way round, a fresh slot 2 next to a stale packed clock looks like a hit in
+  # flight and the stale clock would be taken for a recent one.
+  #
+  # What is left: a process killed between the two writes leaves them
+  # disagreeing. If the bucket is then idle for 35 minutes or more, that one
+  # gap is misread, as a shorter refill or as a clock ahead, until the next
+  # hit that moves the clock.
+  #
+  # A bucket written by 7.5.1 or earlier has whole seconds in slot 2; it reads
+  # as idle for decades and starts over full.
+  defp elapsed(now, _clock, stamp) when stamp < @legacy_stamp, do: now - stamp
+  defp elapsed(now, clock, stamp) when (stamp &&& @clock_mask) == clock, do: now - stamp
+
+  defp elapsed(now, clock, _lagging_stamp) do
+    case now - clock &&& @clock_mask do
+      elapsed when elapsed < @clock_half -> elapsed
+      behind -> behind - (@clock_mask + 1)
+    end
+  end
+
+  # Follow a packed clock that moved (it does not when no time elapsed). Slot
+  # 2 only moves forward, so overlapping hits finishing out of order leave it
+  # at the latest clock, which is the one the packed state holds.
+  defp advance_stamp(atomic, now, elapsed) when elapsed > 0 do
+    stamp = :atomics.get(atomic, 2)
+
+    if stamp < now and :atomics.compare_exchange(atomic, 2, stamp, now) != :ok do
+      advance_stamp(atomic, now, elapsed)
+    end
+  end
+
+  defp advance_stamp(_atomic, _now, _elapsed), do: nil
+
+  # Milliseconds until the bucket has gained `deficit` more thousandths of a
+  # token, rounded up so that sleeping it is sufficient for any cost the
+  # bucket can hold. `ahead` is the time before the refill starts at all.
+  #
+  # A rate of 0 never gets there. There is no honest wait to report, so keep
+  # the flat second this bucket always answered with.
+  defp retry_after(deficit, rate, ahead) when rate > 0 do
+    ahead + max(ceil(deficit / rate), 1)
+  end
+
+  defp retry_after(_deficit, _rate, _ahead), do: 1000
 
   @doc """
   Returns the current level of the bucket for a given key.
@@ -182,13 +268,9 @@ defmodule Hammer.Atomic.TokenBucket do
   @spec get(table :: atom(), key :: term()) :: non_neg_integer()
   def get(table, key) do
     case :ets.lookup(table, key) do
-      [] ->
-        0
-
       [{_, atomic}] ->
-        packed = :atomics.get(atomic, 1)
-        {_timestamp, fill} = unpack(packed)
-        fill
+        {_clock, level} = unpack(:atomics.get(atomic, 1))
+        div(level, 1000)
 
       _ ->
         0
@@ -198,9 +280,7 @@ defmodule Hammer.Atomic.TokenBucket do
   @doc false
   @spec normalize_entry(key :: term(), atomic :: reference()) :: map()
   def normalize_entry(key, atomic) do
-    packed = :atomics.get(atomic, 1)
-    {_timestamp, fill} = unpack(packed)
-    last_update = :atomics.get(atomic, 2)
-    %{key: key, value: fill, expired_at: last_update * 1000}
+    {_clock, level} = unpack(:atomics.get(atomic, 1))
+    %{key: key, value: div(level, 1000), expired_at: :atomics.get(atomic, 2)}
   end
 end

@@ -1,6 +1,7 @@
 defmodule Hammer.Atomic.FixWindowPerKeyTest do
   use ExUnit.Case, async: true
 
+  alias Hammer.Atomic
   alias Hammer.Atomic.FixWindowPerKey
 
   setup do
@@ -177,6 +178,57 @@ defmodule Hammer.Atomic.FixWindowPerKeyTest do
       allows = Enum.count(results, &match?({:allow, _}, &1))
       assert allows == n
       assert FixWindowPerKey.get(table, key, scale) == allows
+    end
+  end
+
+  describe "unfinished window reset" do
+    # Up to 7.5.1, resetting an expired window took a lock by writing a
+    # sentinel into the expiry slot. A process killed while holding it left
+    # the sentinel behind, and every later call on that key spun on it forever.
+    # The lock is gone, but a table that lived through a hot code upgrade can
+    # still carry one: it must read as an expired window, not as a live one
+    # that expires at the end of time.
+    setup %{table: table} do
+      atomic = :atomics.new(2, signed: false)
+      :atomics.put(atomic, 1, 7)
+      :atomics.put(atomic, 2, 0xFFFFFFFFFFFFFFFF)
+      :ets.insert(table, {"stuck", atomic})
+      :ok
+    end
+
+    test "hit opens a fresh window", %{table: table} do
+      task = Task.async(fn -> FixWindowPerKey.hit(table, "stuck", 1000, 10, 1) end)
+
+      assert {:ok, {:allow, 1}} = Task.yield(task, 500) || Task.shutdown(task, :brutal_kill)
+      assert FixWindowPerKey.expires_at(table, "stuck", 1000) <= Atomic.now() + 1000
+    end
+
+    test "inc opens a fresh window", %{table: table} do
+      task = Task.async(fn -> FixWindowPerKey.inc(table, "stuck", 1000, 1) end)
+
+      assert {:ok, 1} = Task.yield(task, 500) || Task.shutdown(task, :brutal_kill)
+      assert FixWindowPerKey.expires_at(table, "stuck", 1000) <= Atomic.now() + 1000
+    end
+
+    test "get and expires_at report no active window", %{table: table} do
+      assert FixWindowPerKey.get(table, "stuck", 1000) == 0
+      assert FixWindowPerKey.expires_at(table, "stuck", 1000) == 0
+    end
+  end
+
+  describe "set on a live window" do
+    test "keeps the same counter, so a hit already in flight is not orphaned",
+         %{table: table} do
+      assert {:allow, 1} = FixWindowPerKey.hit(table, "key", 60_000, 10, 1)
+      [{_, before}] = :ets.lookup(table, "key")
+
+      assert FixWindowPerKey.set(table, "key", 60_000, 5) == 5
+
+      # A hit that looked the counter up before the set lands on the one the
+      # set wrote to, and is counted.
+      assert [{_, ^before}] = :ets.lookup(table, "key")
+      assert :atomics.add_get(before, 1, 1) == 6
+      assert FixWindowPerKey.get(table, "key", 60_000) == 6
     end
   end
 

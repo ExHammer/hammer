@@ -2,7 +2,7 @@ defmodule Hammer.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/ExHammer/hammer"
-  @version "7.5.1"
+  @version "7.5.2"
 
   def project do
     [

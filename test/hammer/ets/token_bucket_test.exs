@@ -272,6 +272,22 @@ defmodule Hammer.ETS.TokenBucketTest do
       assert {:allow, 4} = TokenBucket.hit(table, key, 1000, 10, 1)
     end
 
+    test "the deny wait covers a stored clock ahead of the caller's", %{table: table} do
+      key = "key"
+
+      # A wall clock that stepped back leaves the stored clock ahead. Nothing
+      # refills until the caller's time catches up with it, so that stretch is
+      # part of the wait.
+      :ets.insert(table, {key, 0, System.system_time(:millisecond) + 40})
+
+      assert {:deny, wait} = TokenBucket.hit(table, key, 1000, 10, 1)
+      assert wait in 30..41
+
+      # Retried against the same bucket, the advertised wait is enough.
+      Process.sleep(wait)
+      assert {:allow, _} = TokenBucket.hit(table, key, 1000, 10, 1)
+    end
+
     test "the advertised wait is sufficient across rates, costs and deficits", %{table: table} do
       # The refill path truncates DOWN and the deny path rounds UP, so it is
       # worth pinning that the two cannot conspire to hand a caller a wait
@@ -294,7 +310,7 @@ defmodule Hammer.ETS.TokenBucketTest do
         assert wait >= 1
 
         # The same bucket as a caller finds it having slept the advertised wait.
-        :ets.insert(table, {key, starting_level, System.system_time(:millisecond) - wait})
+        :ets.insert(table, {key, starting_level, frozen - wait})
 
         assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, cost),
                "wait of #{wait}ms was too short for rate=#{refill_rate} " <>

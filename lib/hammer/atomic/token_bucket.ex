@@ -115,12 +115,15 @@ defmodule Hammer.Atomic.TokenBucket do
   # 42 bits hold any capacity up to 2^32 tokens.
   #
   # 22 bits of clock wrap every 70 minutes. Slot 2 holds the full millisecond
-  # time of the last allowed hit, and settles any gap too long for them.
+  # time of that clock, so a gap of any length can be measured: see `elapsed/3`.
   @clock_bits 22
   @clock_mask 0x3FFFFF
   @clock_half 0x200000
   @level_bits 42
   @level_mask 0x3FFFFFFFFFF
+  # Below this, slot 2 cannot be a millisecond time (it would be 1974): it is
+  # the whole seconds that 7.5.1 and earlier kept there.
+  @legacy_stamp 0x2000000000
   @compile {:inline, pack: 2, unpack: 1}
   defp pack(clock, level) do
     (clock &&& @clock_mask) <<< @level_bits ||| (level &&& @level_mask)
@@ -166,11 +169,13 @@ defmodule Hammer.Atomic.TokenBucket do
   end
 
   defp do_hit(atomic, now, refill_rate, capacity, cost) do
+    # Slot 2 is read first: see `elapsed/3`.
+    stamp = :atomics.get(atomic, 2)
     current_packed = :atomics.get(atomic, 1)
     {clock, level} = unpack(current_packed)
 
-    elapsed = elapsed(atomic, now, clock)
-    level = min(capacity * 1000, level + trunc(elapsed * refill_rate))
+    elapsed = elapsed(now, clock, stamp)
+    level = min(capacity * 1000, level + trunc(max(elapsed, 0) * refill_rate))
     price = cost * 1000
 
     if level >= price do
@@ -184,9 +189,7 @@ defmodule Hammer.Atomic.TokenBucket do
 
       case :atomics.compare_exchange(atomic, 1, current_packed, new_packed) do
         :ok ->
-          # Slot 2 feeds age-based cleanup and `elapsed/3`. It is written after
-          # the CAS, not with it: see `elapsed/3` for what that can cost.
-          :atomics.put(atomic, 2, now)
+          advance_stamp(atomic, now, elapsed)
           {:allow, div(final_level, 1000)}
 
         _current_value ->
@@ -194,45 +197,70 @@ defmodule Hammer.Atomic.TokenBucket do
           do_hit(atomic, now, refill_rate, capacity, cost)
       end
     else
-      {:deny, retry_after(price - level, refill_rate)}
+      # Nothing refills until our time has caught up with a clock ahead of it.
+      {:deny, retry_after(price - level, refill_rate, max(-elapsed, 0))}
     end
   end
 
-  # Milliseconds since the bucket's clock.
+  # Milliseconds since the bucket's clock; negative when that clock is ahead
+  # of `now` (a concurrent hit read the time after us, or the wall clock
+  # stepped back).
   #
-  # The packed clock only has the low 22 bits of the time, so the difference
-  # is taken modulo 2^22 and read as signed. A negative difference means a
-  # concurrent hit that read the time after us has already stored a later
-  # clock: no time has passed as far as this bucket is concerned.
+  # The packed clock has only the low 22 bits of the time. Slot 2 holds the
+  # full time of the same clock, so when the two agree the difference is exact
+  # however long the bucket sat idle.
   #
-  # That leaves 35 minutes before a real gap stops fitting. A bucket untouched
-  # for longer is recognised by slot 2, which holds the full time of its last
-  # allowed hit, and that idle time is used. A bucket written by 7.5.1 or
-  # earlier has whole seconds there; it reads as idle for decades and starts
-  # over full.
+  # They are two writes, the packed state first. When they disagree a hit has
+  # moved the packed clock and not yet slot 2, so the packed clock is recent
+  # and its 22 bits are enough: the difference is taken modulo 2^22 and read
+  # as signed. Trusting slot 2 there would credit the whole idle period a
+  # second time, on top of the refill already in the packed level.
   #
-  # Slot 2 is written after the CAS. A hit that lands in that gap on a bucket
-  # idle for 35 minutes or more is credited the idle time again. The level is
-  # capped at capacity either way, so the cost is at most the hits that won
-  # the CAS in that instant going uncounted.
-  defp elapsed(atomic, now, clock) do
-    idle = now - :atomics.get(atomic, 2)
+  # Slot 2 is read before the packed state for the same reason. Read the other
+  # way round, a fresh slot 2 next to a stale packed clock looks like a hit in
+  # flight and the stale clock would be taken for a recent one.
+  #
+  # What is left: a process killed between the two writes leaves them
+  # disagreeing. If the bucket is then idle for 35 minutes or more, that one
+  # gap is misread, as a shorter refill or as a clock ahead, until the next
+  # hit that moves the clock.
+  #
+  # A bucket written by 7.5.1 or earlier has whole seconds in slot 2; it reads
+  # as idle for decades and starts over full.
+  defp elapsed(now, _clock, stamp) when stamp < @legacy_stamp, do: now - stamp
+  defp elapsed(now, clock, stamp) when (stamp &&& @clock_mask) == clock, do: now - stamp
 
+  defp elapsed(now, clock, _lagging_stamp) do
     case now - clock &&& @clock_mask do
-      _wrapped when idle >= @clock_half -> idle
       elapsed when elapsed < @clock_half -> elapsed
-      _behind -> 0
+      behind -> behind - (@clock_mask + 1)
     end
   end
+
+  # Follow a packed clock that moved (it does not when no time elapsed). Slot
+  # 2 only moves forward, so overlapping hits finishing out of order leave it
+  # at the latest clock, which is the one the packed state holds.
+  defp advance_stamp(atomic, now, elapsed) when elapsed > 0 do
+    stamp = :atomics.get(atomic, 2)
+
+    if stamp < now and :atomics.compare_exchange(atomic, 2, stamp, now) != :ok do
+      advance_stamp(atomic, now, elapsed)
+    end
+  end
+
+  defp advance_stamp(_atomic, _now, _elapsed), do: nil
 
   # Milliseconds until the bucket has gained `deficit` more thousandths of a
   # token, rounded up so that sleeping it is sufficient for any cost the
-  # bucket can hold.
+  # bucket can hold. `ahead` is the time before the refill starts at all.
   #
   # A rate of 0 never gets there. There is no honest wait to report, so keep
   # the flat second this bucket always answered with.
-  defp retry_after(deficit, rate) when rate > 0, do: max(ceil(deficit / rate), 1)
-  defp retry_after(_deficit, _rate), do: 1000
+  defp retry_after(deficit, rate, ahead) when rate > 0 do
+    ahead + max(ceil(deficit / rate), 1)
+  end
+
+  defp retry_after(_deficit, _rate, _ahead), do: 1000
 
   @doc """
   Returns the current level of the bucket for a given key.

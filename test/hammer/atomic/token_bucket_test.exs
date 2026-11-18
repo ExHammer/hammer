@@ -134,13 +134,31 @@ defmodule Hammer.Atomic.TokenBucketTest do
       refill_rate = 55
       capacity = 10
 
-      seed(table, key, 0, frozen())
+      clock = frozen()
+      seed(table, key, 0, clock)
 
-      # Short exactly one token: ceil(1000 / 55) == 19ms.
-      assert {:deny, 19} = TokenBucket.hit(table, key, refill_rate, capacity, 1)
+      # Short exactly one token: ceil(1000 / 55) == 19ms, once the bucket's
+      # clock has been caught up with.
+      assert 19 in refill_wait(table, key, refill_rate, capacity, 1, clock)
 
       # The wait scales with how many tokens the cost is short of.
-      assert {:deny, 91} = TokenBucket.hit(table, key, refill_rate, capacity, 5)
+      assert 91 in refill_wait(table, key, refill_rate, capacity, 5, clock)
+    end
+
+    test "the deny wait covers a stored clock ahead of the caller's", %{table: table} do
+      key = "key"
+
+      # A wall clock that stepped back leaves the stored clock ahead. Nothing
+      # refills until the caller's time catches up with it, so that stretch is
+      # part of the wait.
+      seed(table, key, 0, System.system_time(:millisecond) + 40)
+
+      assert {:deny, wait} = TokenBucket.hit(table, key, 1000, 10, 1)
+      assert wait in 30..41
+
+      # Retried against the same bucket, the advertised wait is enough.
+      Process.sleep(wait)
+      assert {:allow, _} = TokenBucket.hit(table, key, 1000, 10, 1)
     end
 
     test "the advertised wait is sufficient across rates, costs and deficits", %{table: table} do
@@ -151,13 +169,14 @@ defmodule Hammer.Atomic.TokenBucketTest do
           starting_level <- [0, div(cost, 2)],
           starting_level < cost do
         key = "sufficient:#{refill_rate}:#{capacity}:#{cost}:#{starting_level}"
-        seed(table, key, starting_level, frozen())
+        clock = frozen()
+        seed(table, key, starting_level, clock)
 
         assert {:deny, wait} = TokenBucket.hit(table, key, refill_rate, capacity, cost)
         assert wait >= 1
 
         # The same bucket as a caller finds it having slept the advertised wait.
-        seed(table, key, starting_level, System.system_time(:millisecond) - wait)
+        seed(table, key, starting_level, clock - wait)
 
         assert {:allow, _} = TokenBucket.hit(table, key, refill_rate, capacity, cost),
                "wait of #{wait}ms was too short for rate=#{refill_rate} " <>
@@ -177,6 +196,38 @@ defmodule Hammer.Atomic.TokenBucketTest do
         assert {:allow, level} = TokenBucket.hit(table, key, 1, 100_000_000, 1)
         assert level in (div(idle, 1000) - 1)..(div(idle, 1000) + 5)
       end
+    end
+
+    test "a long idle refill is not credited again by an overlapping hit", %{table: table} do
+      # The packed state and slot 2 are two writes. Between them the packed
+      # state already holds the idle refill and the current clock, while slot 2
+      # still holds the time before the idle period.
+      for idle <- [:timer.minutes(40), :timer.hours(3), :timer.hours(24 * 30)] do
+        key = "overlap:#{idle}"
+        now = System.system_time(:millisecond)
+        seed(table, key, 2399, now, now - idle)
+
+        # One token per second into a bucket too large to fill.
+        assert {:allow, 2398} = TokenBucket.hit(table, key, 1, 100_000_000, 1)
+      end
+    end
+
+    test "concurrent hits after a long idle share one refill", %{table: table} do
+      key = "key"
+      idle = :timer.minutes(40)
+      seed(table, key, 0, System.system_time(:millisecond) - idle)
+
+      # One token per second into a bucket too large to fill.
+      allowed =
+        1..50
+        |> Enum.map(fn _ ->
+          Task.async(fn -> TokenBucket.hit(table, key, 1, 100_000_000, 1) end)
+        end)
+        |> Task.await_many()
+        |> Enum.count(&match?({:allow, _}, &1))
+
+      assert allowed == 50
+      assert (TokenBucket.get(table, key) + allowed) in div(idle, 1000)..(div(idle, 1000) + 5)
     end
 
     test "a stored clock ahead of the caller's credits nothing", %{table: table} do
@@ -277,11 +328,12 @@ defmodule Hammer.Atomic.TokenBucketTest do
 
   # Publish a bucket holding `level` whole tokens whose clock reads `timestamp`
   # (ms), packed the way the algorithm packs it: the low 22 bits of the time
-  # high, the level in thousandths of a token low.
-  defp seed(table, key, level, timestamp) do
+  # high, the level in thousandths of a token low. Slot 2 holds `stamp`, the
+  # full time of that clock unless a test wants it lagging.
+  defp seed(table, key, level, timestamp, stamp \\ nil) do
     atomic = :atomics.new(2, signed: false)
     :atomics.put(atomic, 1, (timestamp &&& 0x3FFFFF) <<< 42 ||| level * 1000)
-    :atomics.put(atomic, 2, timestamp)
+    :atomics.put(atomic, 2, stamp || timestamp)
     :ets.insert(table, {key, atomic})
   end
 
@@ -291,6 +343,17 @@ defmodule Hammer.Atomic.TokenBucketTest do
     packed = :atomics.get(atomic, 1)
     level = packed &&& 0x3FFFFFFFFFF
     :atomics.put(atomic, 1, ((packed >>> 42) - ms &&& 0x3FFFFF) <<< 42 ||| level)
+    :atomics.put(atomic, 2, :atomics.get(atomic, 2) - ms)
+  end
+
+  # The deny wait with the time left until `clock`, a stored clock ahead of
+  # ours, taken out: what remains is the time the refill itself needs. A
+  # range, because the hit read the time somewhere between `before` and now.
+  defp refill_wait(table, key, refill_rate, capacity, cost, clock) do
+    before = System.system_time(:millisecond)
+    assert {:deny, wait} = TokenBucket.hit(table, key, refill_rate, capacity, cost)
+    gap = clock - System.system_time(:millisecond)
+    (wait - (clock - before))..(wait - gap)
   end
 
   defp frozen, do: System.system_time(:millisecond) + :timer.minutes(1)

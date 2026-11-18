@@ -180,8 +180,12 @@ defmodule Hammer.ETS.TokenBucket do
       # the returned value is always sufficient: it is at least
       # `deficit * 1000 / refill_rate` ms, which accrues at least `deficit`
       # whole tokens on top of whatever the current `trunc` already credited.
+      #
+      # A stored clock ahead of `now` refills nothing until our time has
+      # caught up with it, so that stretch comes first.
       deficit = cost - current_tokens
-      {:deny, max(div(deficit * 1000 + refill_rate - 1, refill_rate), 1)}
+      ahead = max(ceil(last_update - now), 0)
+      {:deny, ahead + max(div(deficit * 1000 + refill_rate - 1, refill_rate), 1)}
     end
   end
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.5.2 - 2026-11-18
+## 7.6.0 - 2026-11-20
 
 - Fix `LeakyBucket` (ETS and Atomic backends) and `TokenBucket` (Atomic backend) returning a flat `{:deny, 1000}`; they now return the real time in milliseconds until the hit would be allowed, as the ETS `TokenBucket` has since 7.5.0. The leaky buckets count in whole seconds, so their value runs to the second boundary at which the bucket has leaked enough. **Behaviour change:** the value is no longer always 1000. It can be much larger (e.g. up to 144000 for a bucket 144 over capacity at `leak_rate: 1`) or smaller (down to 1 when the next second is about to start). Code that converts it to a `retry-after` header should round up and floor at 1 second. A rate of 0 still answers `{:deny, 1000}`. (#221)
 - Fix `LeakyBucket` (ETS and Atomic backends) allowing a hit whenever the level was below capacity, whatever its cost, so a bucket could be filled to `capacity - 1 + cost`. A hit is now allowed only if the level after it stays within capacity, as the moduledoc always said and as the Mnesia backend does. **Behaviour change:** hits with `cost > 1` that used to overfill the bucket are now denied; hits with `cost: 1` behave as before. A `cost` larger than `capacity` is never allowed. (#222)

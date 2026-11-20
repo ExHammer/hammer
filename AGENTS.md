@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hammer is an Elixir rate-limiting library published on Hex as `hammer` (current version 7.5.0). Applications define a module with `use Hammer, backend: ...`, supervise it, and call `hit/3` (or `hit/4`) with a key, a scale in ms and a limit. It ships two in-VM backends (ETS and `:atomics`); external backends live in separate repos (`hammer-backend-redis`, `hammer-backend-mnesia`). It is a library: no database, no web layer, no deploy target. It is released to hex.pm and hexdocs.pm.
+Hammer is an Elixir rate-limiting library published on Hex as `hammer` (current version 7.6.0). Applications define a module with `use Hammer, backend: ...`, supervise it, and call `hit/3` (or `hit/4`) with a key, a scale in ms and a limit. It ships two in-VM backends (ETS and `:atomics`); external backends live in separate repos (`hammer-backend-redis`, `hammer-backend-mnesia`). It is a library: no database, no web layer, no deploy target. It is released to hex.pm and hexdocs.pm.
 
 This checkout is the **upstream ExHammer repository**: `origin` is `git@github.com:ExHammer/hammer`, and `@source_url` in `mix.exs` is `https://github.com/ExHammer/hammer`. It is not a personal fork. Default branch is `master`.
 
